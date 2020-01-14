@@ -1,0 +1,5 @@
+#!/bin/bash
+
+GOROOT=/opt/go1.13/
+PATH=$GOROOT/bin:$PATH
+
