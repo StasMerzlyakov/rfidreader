@@ -1,17 +1,8 @@
-# rpiImageBuild
-sample rpi build image with test in docker container
-
-
-## requirements (ubutnu 16.04)
-sudo apt install qemu
-
-## links:
-- [Building ARM containers](https://www.balena.io/blog/building-arm-containers-on-any-x86-machine-even-dockerhub/)
-
-
+# rfidreader
+RFID RC522 RPI reader sample 
 
 
 # Rasbery PI
 - [Install Images](https://www.raspberrypi.org/documentation/installation/installing-images/linux.md)
 - [Raspberry Pi HDMI display not working, how to solve it?](https://howtoraspberrypi.com/raspberry-pi-hdmi-not-working/)
-
+- [package mfrc522](https://godoc.org/periph.io/x/periph/experimental/devices/mfrc522)
