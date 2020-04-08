@@ -1,0 +1,187 @@
+Для управления работой пина IRQ используется регистр ComIEnReg (9.3.1.3)
+// Устанавливаем бит, отвечающий за блокировку/разблокировку  interrupt requests
+// Bit 7 6 5 4 3 2 1 0
+// Symbol IRqInv TxIEn RxIEn IdleIEn HiAlertIEn LoAlertIEn ErrIEn TimerIEn
+// Access R/W R/W R/W R/W R/W R/W R/W R/W
+
+
+Пример: для получения сигнала, отслеживающего событие HiAlertIEn 
+нужно установить PCD_SetRegisterBitMask(ComIEnReg, 0x08)
+
+
+
+
+Стек протоколов обмена
+ISO/IEC 7816
+ISO/IEC 14443 A
+SPI
+
+Установка флага TAuto в TModeReg позволяет запустить таймер после операции передачи данных в PICC. (9.3.3.10 TModeReg and TPrescalerReg registers)
+Между передачей и приемом должно пройти минимум 
+(1172/fc + 10/fc дополнительно). Для MFRC522 fc = 13.56MHz (нужно уточнить ?) 
+
+
+
+Таймер управляется величинами TPrescaler - коэйфициент деления таймера внутренних частов(13.56MHz) и TReloadVal - кол-во циклов.
+f_timer = 13.56MHz / (2*TPrescaler+1) - частота срабатывания таймера
+
+
+
+
+Управление включением/отключением антены через пины TX1 и TX2 регистра TxControlReg
+
+Управление уровнем сигнала антены - регистр RFCfgReg
+
+
+Выполнение команд через командный регистр
+раздел 10. MFRC522 command set
+
+
+Отправка команды в PICC
+
+1. PCD_Init():
+       // TAuto=1 - устанавливаем таймер на автоматический запуск в конце передачи
+      PCD_WriteRegister(TModeReg, 0x80) 
+      // устанавливаем f_timer в 40kHz и задаем 1000 итераций; то есть таймер сработает через каждые 25мс
+      PCD_WriteRegister(TPrescalerReg, 0xA9)
+      PCD_WriteRegister(TReloadRegH, 0x03)
+      PCD_WriteRegister(TReloadRegL, 0xE8)
+      
+      // Установка значения CRC coprocessor в 0x6363 (ISO 14443-3 part 6.2.4)
+      PCD_WriteRegister(ModeReg, 0x3D)
+
+      // Запуск антены
+      PCD_AntennaOn()
+
+
+2. PCD_Transive()
+      // Останавливаем все выполняющиеся операции
+      PCD_WriteRegister(CommandReg, PCD_Idle)
+
+      // Очистка флагов
+      PCD_WriteRegister(ComIrqReg, 0x80)
+
+      // Собираемся отслеживать RxIRq, ErrIEn и TimerIEn
+      PCD_SetRegisterBitMask(ComIEnReg, 0x23)
+      // (if the RxModeReg register’s RxNoErr bit is set to logic 1, the RxIRq bit is
+      // only set to logic 1 when data bytes are available in the FIFO)
+      PCD_SetRegisterBitMask(RxModeReg, 0x04) 
+
+
+      // Очистка FIFO буфера
+      PCD_SetRegisterBitMask(FIFOLevelReg, 0x80)	
+
+      // Запись данных для передачи
+      PCD_WriteRegisterArr(FIFODataReg, sendData)
+
+      // Подготовка к передаче данных 
+      PCD_WriteRegister(CommandReg, PCD_Transceive)
+
+      // Запуск передачи
+      PCD_SetRegisterBitMask(BitFramingReg, 0x80)
+
+      // Ожидаем завершения передачи или завершения по таймауту(таймер запускается автоматически после передачи)
+      irqPin.WaitForEdge(timeout)
+      case PCD_ReadRegister(ComIrqReg) {
+проверка того что пришло: RxIRq, ErrIRq или TimerIEn	// TODO - проверка что не было ErrIRq и таймаут не вышел и что не было ошибок
+	}
+ 
+если RxIRq то нужно прочитать данные из FIFO
+  count := PVD_ReadRegister(FIFOLevelReg)
+    result := PCD_ReadRegisterArr(FIFODataReg, count)  
+
+  
+
+
+
+   
+
+2. PCD_CalculateCRC()
+    // Останавливаем все выполняющиеся операции
+    PCD_WriteRegister(CommandReg, PCD_Idle) 
+
+	// Очистка FIFO буфера
+    PCD_SetRegisterBitMask(FIFOLevelReg, 0x80)	
+
+    // Запись данных для передачи
+    PCD_WriteRegisterArr(FIFODataReg, sendData)
+
+	// Очистка  CRCIRq бита
+    PCD_WriteRegister(DivIrqReg, 0x04);
+	
+    // Собираемся отслеживать CRCIRq
+    PCD_SetRegisterBitMask(DivIEnReg, 0x20)
+    
+    // Запуск вычисления CRC
+    PCD_WriteRegister(CommandReg, PCD_CalcCRC);
+
+    // Ожидаем завершения передачи или завершения по таймауту
+    irqPin.WaitForEdge(timeout)
+    
+    if PCD_ReadRegister(DivIrqReg) {
+  		// Получение результата
+  		result[0] = PCD_ReadRegister(CRCResultRegL)
+		result[1] = PCD_ReadRegister(CRCResultRegH)
+	} else {
+		проверка того - пришло ли:  CRCIRq 	// TODO - таймаут не вышел и что не было ошибок
+		
+	}
+	
+	
+
+
+/////////////////////////////////////////////////
+/////      ISO 14443-3
+/////////////////////////////////////////////////
+
+
+ Короткий кадр ( инициализация передачи)
+
+- старт передачи;
+- 7 бит данных, передаваемых начиная с LSB (для кодирования см. таблицу 3);
+- конец передачи.
+
+  LSB               MSB
+S b1 Ь2 ЬЗ Ь4 Ь5 Ь6 Ь7 E
+
+
+
+
+ Стандартный кад( обмена данными)
+
+- старт передачи;
+- п * (8 бит данных + нечетный бит контроля четности), где п > 1. LSB каждого байта передается
+первым. За каждым байтом следует бит отрицательной четности. Бит контроля четности Р устанавливается таким образом, чтобы число единиц было нечетно в битах (от b1 до Ь8, Р);
+- конец передачи
+
+
+
+
+ Бит-ориентированный кадр антиколлизии
+
+Бит-ориентированные кадры антиколлизии должны использоваться только в течение циклов
+биткадровой антиколлизии. Они представляют собой стандартные кадры длиной 7 байт, разбитые на
+две части:
+
+- часть 1 - для передачи от PCD к PICC;
+- часть 2 - для передачи от PICC к PCD.
+
+- правило 1: сумма бит данных должна быть 56 ( то есть всего в сумме должно быть 7 байт);
+- правило 2: минимальная длина части 1 должна быть 16 бит данных;
+- правило 3: максимальная длина части 1 должна быть 48 бит данных.
+
+
+
+
+///////////////////////////////
+///  Обмен с картой
+///////////////////////////////
+IDLE -REQA-> READY   в ответ ATQA
+
+READY -SELECT-> ACTIVE // PICC переходит в состояние ACTIVE, если она выбрана со своим полным UID
+
+ 
+
+
+
+
