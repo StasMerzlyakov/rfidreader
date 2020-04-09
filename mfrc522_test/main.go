@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"rfidreader/iso14443"
 	"rfidreader/mfrc522"
 	"time"
 
@@ -33,15 +34,16 @@ func run() int {
 	rstPin := gpioreg.ByName(RST)
 	irqPin := gpioreg.ByName(IRQ)
 
-	reader, err := mfrc522.NewMFRC522(spiPort, rstPin, irqPin)
+	mfrc522dev, err := mfrc522.NewMFRC522(spiPort, rstPin, irqPin)
 
 	//if err := reader.PCD_HardReset(); err != nil {
 	//	log.Fatal(err.Error())
 	//}
 	//reader.PCD_Init()
-	if err = reader.PCD_PerformSelfTest(); err != nil {
-		reader.PCD_Reset()
-		if err = reader.PCD_PerformSelfTest(); err != nil {
+
+	if err = mfrc522dev.PCD_PerformSelfTest(); err != nil {
+		mfrc522dev.PCD_Reset()
+		if err = mfrc522dev.PCD_PerformSelfTest(); err != nil {
 			log.Printf(err.Error())
 			return 1
 		}
@@ -153,7 +155,7 @@ func run() int {
 	}*/
 	arr := make([]byte, 63)
 	for i := 0; i < 10; i++ {
-		if result, err := reader.PCD_CalculateCRC(arr, mfrc522.INTERUPT_TIMEOUT); err != nil {
+		if result, err := mfrc522dev.PCD_CalculateCRC(arr, iso14443.INTERUPT_TIMEOUT); err != nil {
 			log.Printf(err.Error())
 			return 1
 		} else {
@@ -162,30 +164,41 @@ func run() int {
 		}
 	}
 
-	if err := reader.PCD_Reset(); err != nil {
+	if err := mfrc522dev.PCD_Reset(); err != nil {
 		log.Printf(err.Error())
 		return 1
 	}
-	reader.PCD_Init()
+
+	driver := iso14443.NewISO14443Driver(mfrc522dev)
+
+	mfrc522dev.PCD_Init()
+	defer mfrc522dev.PCD_AntennaOff()
 
 	for i := 0; i < 50; i++ {
-		val := reader.PICC_IsNewCardPresent()
+		if err := mfrc522dev.PCD_AntennaOn(); err != nil {
+			log.Printf("mfrc522dev.PCD_AntennaOn error %s\n", err.Error())
+		}
+		val := driver.PICC_IsNewCardPresent()
 		log.Printf("IsNewCardPresent %t", val)
 		if val {
 			log.Printf("    Try select card\n")
-			if uid, err := reader.PICC_Select(); err != nil {
+			if uid, err := driver.PICC_Select(); err != nil {
 				log.Printf(err.Error())
 			} else {
 				log.Printf("Found card:\n")
 				log.Printf("    uid: [% x]\n", uid.Uid)
 				log.Printf("    sak: %08b\n", uid.Sak)
 				log.Printf("    type: %d\n", uid.PicType)
-				reader.PCD_AntennaOff()
-				reader.PCD_AntennaOn()
 			}
 		}
 		time.Sleep(time.Millisecond * 500)
+		if err := mfrc522dev.PCD_AntennaOff(); err != nil {
+			log.Printf("mfrc522dev.PCD_AntennaOff error %s\n", err.Error())
+		}
+
+		//driver.ScanPrepare()
 	}
+
 	return 0
 
 }

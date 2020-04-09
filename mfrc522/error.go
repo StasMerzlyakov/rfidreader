@@ -1,24 +1,10 @@
 package mfrc522
 
-import "errors"
+import (
+	"errors"
+)
 
 type mfrc522Error struct{ error }
-
-func SelectionError(desc string) error {
-	return mfrc522Error{errors.New(desc)}
-}
-
-func CollErrError(desc string) error {
-	return mfrc522Error{errors.New(desc)}
-}
-
-func UnexpectedResponse(desc string) error {
-	return mfrc522Error{errors.New(desc)}
-}
-
-func CommonError(desc string) error {
-	return mfrc522Error{errors.New(desc)}
-}
 
 func UnexpectedIRqError(desc string) error {
 	return mfrc522Error{errors.New(desc)}
@@ -33,9 +19,5 @@ func CRCIRqError(desc string) error {
 }
 
 func ErrIRqError(desc string) error {
-	return mfrc522Error{errors.New(desc)}
-}
-
-func CRCCheckError(desc string) error {
 	return mfrc522Error{errors.New(desc)}
 }

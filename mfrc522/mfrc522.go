@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"rfidreader/iso14443"
 	"time"
 
 	"periph.io/x/periph/conn/gpio"
@@ -128,11 +129,10 @@ const (
 	// 						  0x3E			// reserved for production tests
 	// 						  0x3F			// reserved for production tests
 
-	// interupt timeout
-	INTERUPT_TIMEOUT = 5 * time.Millisecond
 )
 
 type MFRC522 struct {
+	iso14443.ISO14443Driver
 	spiDev spi.Conn
 	//operationTimeout time.Duration
 	//	beforeCall       func()
@@ -144,14 +144,14 @@ type MFRC522 struct {
 
 type IRQCallbackFn func()
 
-func NewMFRC522(spiPort spi.Port, resetPin gpio.PinOut, irqPin gpio.PinIn) (*MFRC522, error) {
+func NewMFRC522(spiPort spi.Port, resetPin gpio.PinOut, irqPin gpio.PinIn) (iso14443.PCDDevice, error) {
 
 	if resetPin == nil {
-		return nil, CommonError("Reset pin is not set")
+		return nil, iso14443.CommonError("Reset pin is not set")
 	}
 
 	if irqPin == nil {
-		return nil, CommonError("IRQ pin is not set")
+		return nil, iso14443.CommonError("IRQ pin is not set")
 	}
 
 	spiDev, err := spiPort.Connect(10*physic.MegaHertz, spi.Mode0, 8)
@@ -257,6 +257,19 @@ func (r *MFRC522) PCD_SetRegisterBitMask(reg, mask byte) error {
 } // End PCD_SetRegisterBitMask()
 
 /**
+ */
+func (r *MFRC522) PCD_IsCollisionOccure() (bool, error) {
+	if anyByte, err := r.PCD_ReadRegister(ErrorReg); err != nil {
+		return false, err
+	} else {
+		if anyByte&0x08 == 0 { // CollErr is 0!!
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+/**
  * Communicate with PICC.
  */
 func (r *MFRC522) PCD_CommunicateWithPICC(dataToSend []byte,
@@ -264,6 +277,9 @@ func (r *MFRC522) PCD_CommunicateWithPICC(dataToSend []byte,
 	duration time.Duration) (
 	result []byte,
 	err error) {
+
+	// Clear collision registr
+	r.PCD_ClearRegisterBitMask(CollReg, 0x80)
 
 	// Stop all operations
 	if err = r.PCD_WriteRegister(CommandReg, PCD_Idle); err != nil {
@@ -462,7 +478,7 @@ func (r *MFRC522) PCD_AntennaOn() error {
 		if err != nil {
 			return err
 		}
-		time.Sleep(INTERUPT_TIMEOUT)
+		time.Sleep(iso14443.INTERUPT_TIMEOUT)
 	}
 	return nil
 } // End PCD_AntennaOn()
@@ -478,7 +494,7 @@ func (r *MFRC522) PCD_AntennaOff() error {
 			if err := r.PCD_ClearRegisterBitMask(TxControlReg, 0x03); err != nil {
 				return err
 			}
-			time.Sleep(INTERUPT_TIMEOUT)
+			time.Sleep(iso14443.INTERUPT_TIMEOUT)
 		}
 	}
 	return nil
@@ -487,7 +503,7 @@ func (r *MFRC522) PCD_AntennaOff() error {
 /**
  * Initializes the MFRC522 chip.
  */
-func (r *MFRC522) PCD_Init() { // TODO error processing
+func (r *MFRC522) PCD_Init() error { // TODO error processing
 
 	// When communicating with a PICC we need a timeout if something goes wrong.
 	// f_timer = 13.56 MHz / (2*TPreScaler+1) where TPreScaler = [TPrescaler_Hi:TPrescaler_Lo].
@@ -505,8 +521,9 @@ func (r *MFRC522) PCD_Init() { // TODO error processing
 
 	r.PCD_WriteRegister(TxASKReg, 0x40) // Default 0x00. Force a 100 % ASK modulation independent of the ModGsPReg register setting
 	r.PCD_WriteRegister(ModeReg, 0x3D)  // Default 0x3F. Set the preset value for the CRC coprocessor for the CalcCRC command to 0x6363 (ISO 14443-3 part 6.2.4)
-	r.PCD_AntennaOn()                   // Enable the antenna driver pins TX1 and TX2 (they were disabled by the reset)
+	//r.PCD_AntennaOn()                   // Enable the antenna driver pins TX1 and TX2 (they were disabled by the reset)
 
+	return nil
 } // End PCD_Init()
 
 /**
@@ -629,7 +646,7 @@ func (r *MFRC522) PCD_PerformSelfTest() error {
 	case VER_2_0:
 		expected = MFRC522_VER_2_0
 	default:
-		return CommonError(fmt.Sprintf("Can't read version: %x", version))
+		return iso14443.CommonError(fmt.Sprintf("Can't read version: %x", version))
 	}
 
 	if bytes.Compare(result, expected) != 0 {
@@ -638,179 +655,3 @@ func (r *MFRC522) PCD_PerformSelfTest() error {
 	}
 	return nil
 } // End PCD_PerformSelfTest()
-
-/////////////////////////////////////////////////////////////////////////////////////
-// Functions for communicating with PICCs
-/////////////////////////////////////////////////////////////////////////////////////
-
-func (r *MFRC522) PICC_RequestA() ([]byte, error) {
-	r.PCD_ClearRegisterBitMask(CollReg, 0x80)
-	validBits := byte(7)
-	return r.PCD_CommunicateWithPICC([]byte{PICC_CMD_REQA}, &validBits, INTERUPT_TIMEOUT)
-}
-
-func (r *MFRC522) PICC_RequestWUPA() ([]byte, error) {
-	r.PCD_ClearRegisterBitMask(CollReg, 0x80)
-	validBits := byte(7)
-	return r.PCD_CommunicateWithPICC([]byte{PICC_CMD_WUPA}, &validBits, INTERUPT_TIMEOUT)
-}
-
-/**
- * Anticollision cycle ISO/IEC 14443-3:2011
- */
-func (r *MFRC522) picc_select(clevel int /* Cascade level */, duration time.Duration) (uid []byte, sak byte, err error) {
-
-	log.Printf(" picc_select %d\n", clevel)
-
-	var selByte byte
-
-	switch clevel {
-	case 1:
-		selByte = PICC_CMD_SEL_CL1
-	case 2:
-		selByte = PICC_CMD_SEL_CL2
-	case 3:
-		selByte = PICC_CMD_SEL_CL3
-	default:
-		err = CommonError(fmt.Sprintf("Wrong cascade level %d\n", clevel))
-	}
-
-	nvb := byte(0x20)
-
-	dataToSend := []byte{selByte, nvb}
-
-	validBits := byte(0)
-
-	r.PCD_ClearRegisterBitMask(CollReg, 0x80) // clear ValuesAfterColl bit
-
-	var result []byte
-	log.Printf("  send [% x]\n", dataToSend)
-	if result, err = r.PCD_CommunicateWithPICC(dataToSend, &validBits, duration); err != nil {
-		return
-	}
-
-	if len(result) != 5 {
-		// UIDcl + BC
-		err = CommonError(fmt.Sprintf("Unexpected result length: level %d, len(result): %d\n", clevel, len(result)))
-		return
-	}
-
-	// Check collision
-	var anyByte byte
-	if anyByte, err = r.PCD_ReadRegister(ErrorReg); err != nil {
-		return
-	} else {
-		if anyByte&0x08 == 0 { // CollErr is 0!!
-			log.Printf(" CollErr is 0\n")
-			log.Printf("   validBits: %d\n", validBits)
-			var crc_a []byte
-			nvb = byte(0x70)
-			// Calculate CRC
-			dataToSend = append([]byte{selByte, nvb}, result...)
-			if crc_a, err = r.PCD_CalculateCRC(dataToSend, INTERUPT_TIMEOUT); err != nil {
-				return
-			}
-
-			uid = result[:4]
-			dataToSend = append(dataToSend, crc_a...)
-			log.Printf("  send [% x]\n", dataToSend)
-			if result, err = r.PCD_CommunicateWithPICC(dataToSend, &validBits, duration); err != nil {
-				return
-			}
-			if len(result) != 3 { // SAK must be exactly 24 bits (1 byte + CRC_A)
-				err = CommonError(fmt.Sprintf("SAK must be exactly 24 bits (1 byte + CRC_A). Received %d\n", len(result)))
-				return
-			}
-
-			var crcRes []byte
-			if crcRes, err = r.PCD_CalculateCRC(result[:1], duration); err != nil {
-				return
-			}
-			if bytes.Compare(crcRes, result[1:]) != 0 {
-				err = CommonError(fmt.Sprintf("CRC check SAK CRC_A error: \n"+
-					"calucated: [% x]\n received [% x]\n", crcRes, result[:2]))
-				return
-			}
-
-			sak = result[0]
-			return
-		} else {
-			err = CommonError("COLLISION CYCLE NOT SUPPORTED YET\n")
-		}
-	}
-
-	return
-}
-
-/**
- * Initialization and anticollision cycle ISO/IEC 14443-3:2011
- */
-func (r *MFRC522) PICC_Select() (uid *UID, err error) {
-	// Expected that RequestA sended by method PICC_IsNewCardPresent
-
-	level := 1
-	var sak byte
-	var buffer []byte
-	uidVal := []byte{}
-	for {
-		if buffer, sak, err = r.picc_select(level, INTERUPT_TIMEOUT); err != nil {
-			return nil, err
-		}
-
-		if buffer[0] == PICC_CMD_CT { // skip Cascade Tag
-			uidVal = append(uidVal, buffer[1:]...)
-		} else {
-			uidVal = append(uidVal, buffer[:]...)
-		}
-		// Check SAK
-		if sak&0x04 == 0 { // UID complete
-			uid = &UID{Uid: uidVal, Sak: sak}
-
-			switch sak & 0x7F {
-			case 0x04:
-				uid.PicType = PICC_TYPE_NOT_COMPLETE // UID not complete
-			case 0x09:
-				uid.PicType = PICC_TYPE_MIFARE_MINI
-			case 0x08:
-				uid.PicType = PICC_TYPE_MIFARE_1K
-			case 0x18:
-				uid.PicType = PICC_TYPE_MIFARE_4K
-			case 0x00:
-				uid.PicType = PICC_TYPE_MIFARE_UL
-			case 0x10:
-			case 0x11:
-				uid.PicType = PICC_TYPE_MIFARE_PLUS
-			case 0x01:
-				uid.PicType = PICC_TYPE_TNP3XXX
-			case 0x20:
-				uid.PicType = PICC_TYPE_ISO_14443_4
-			case 0x40:
-				uid.PicType = PICC_TYPE_ISO_18092
-			default:
-				uid.PicType = PICC_TYPE_UNKNOWN
-			}
-
-			break
-		}
-		log.Printf(" ------ Level: %d. UID is not complete. SAK: %08b\n", level, sak)
-
-		level++
-	}
-	return
-}
-
-/**
- * Returns true if a PICC responds to PICC_CMD_REQA.
- * Only "new" cards in state IDLE are invited. Sleeping cards in state HALT are ignored.
- */
-func (r *MFRC522) PICC_IsNewCardPresent() bool {
-
-	// Reset baud rates
-	/*r.PCD_WriteRegister(TxModeReg, 0x00)
-	r.PCD_WriteRegister(RxModeReg, 0x00)
-	// Reset ModWidthReg
-	r.PCD_WriteRegister(ModWidthReg, 0x26)
-	*/
-	res, _ := r.PICC_RequestA()
-	return len(res) == 2
-}
