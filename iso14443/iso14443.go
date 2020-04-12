@@ -88,7 +88,7 @@ type PCDDevice interface {
 	/**
 	 *  Turns the antenna off
 	 */
-	PCD_AntenaOff() error
+	PCD_AntennaOff() error
 }
 
 type ISO14443Driver struct {
@@ -111,7 +111,7 @@ func (r *ISO14443Driver) PCD_Init() error {
  * Initialize physical device for scanning
  */
 func (r *ISO14443Driver) StartScan() error {
-	return r.device.PCD_AntenaOff()
+	return r.device.PCD_AntennaOff()
 }
 
 /**

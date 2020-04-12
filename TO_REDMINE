@@ -183,5 +183,23 @@ READY -SELECT-> ACTIVE // PICC переходит в состояние ACTIVE, 
  
 
 
+Карты MIFARE CLASSIC
+
+
+Карты MIFARE Classiс 1К предоставляют область памяти, организованную в сектора по 64 байта. Каждый сектор разбит на 4 блока размером 16 байт:
+
+
+https://habr.com/ru/company/ppr/blog/437414/
+
+
+Аутентификация крат MIFARE CLASSIC
+AN10927.pdf
+
+CT + UID0...UID2 
+
+
+
+
+
 
 
