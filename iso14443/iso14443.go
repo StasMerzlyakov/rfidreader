@@ -31,6 +31,8 @@ const (
 	PICC_CMD_SEL_CL2 = 0x95 // Anti collision/Select, Cascade Level 2
 	PICC_CMD_SEL_CL3 = 0x97 // Anti collision/Select, Cascade Level 3
 
+	ISO_14443_CRC_RESET = 0x6363
+
 	// interupt timeout
 	INTERUPT_TIMEOUT = 5 * time.Millisecond
 )
@@ -63,7 +65,7 @@ type PCDDevice interface {
 	/**
 	 * Calculate a CRC_A
 	 */
-	PCD_CalculateCRC(buffer []byte, duration time.Duration) ([]byte, error)
+	PCD_CalculateCRC(crcResetValue int, buffer []byte, duration time.Duration) ([]byte, error)
 
 	/**
 	 * Initializes chip.
@@ -200,7 +202,7 @@ func (r *ISO14443Driver) selectLevel(clevel int /* Cascade level */, duration ti
 			nvb = byte(0x70)
 			// Calculate CRC
 			dataToSend = append([]byte{selByte, nvb}, result...)
-			if crc_a, err = r.device.PCD_CalculateCRC(dataToSend, INTERUPT_TIMEOUT); err != nil {
+			if crc_a, err = r.device.PCD_CalculateCRC(ISO_14443_CRC_RESET, dataToSend, INTERUPT_TIMEOUT); err != nil {
 				return
 			}
 
@@ -216,7 +218,7 @@ func (r *ISO14443Driver) selectLevel(clevel int /* Cascade level */, duration ti
 			}
 
 			var crcRes []byte
-			if crcRes, err = r.device.PCD_CalculateCRC(result[:1], duration); err != nil {
+			if crcRes, err = r.device.PCD_CalculateCRC(ISO_14443_CRC_RESET, result[:1], duration); err != nil {
 				return
 			}
 			if bytes.Compare(crcRes, result[1:]) != 0 {

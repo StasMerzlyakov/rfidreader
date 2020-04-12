@@ -155,7 +155,8 @@ func run() int {
 	}*/
 	arr := make([]byte, 63)
 	for i := 0; i < 10; i++ {
-		if result, err := mfrc522dev.PCD_CalculateCRC(arr, iso14443.INTERUPT_TIMEOUT); err != nil {
+		// crcValue 0xffff - default value
+		if result, err := mfrc522dev.PCD_CalculateCRC(0xffff, arr, iso14443.INTERUPT_TIMEOUT); err != nil {
 			log.Printf(err.Error())
 			return 1
 		} else {

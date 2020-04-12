@@ -376,7 +376,20 @@ func (r *MFRC522) PCD_CommunicateWithPICC(dataToSend []byte,
  * Use the CRC coprocessor in the MFRC522 to calculate a CRC_A.
  * @return Result is written to result[0..1], low byte first.
  */
-func (r *MFRC522) PCD_CalculateCRC(buffer []byte, duration time.Duration) ([]byte, error) {
+func (r *MFRC522) PCD_CalculateCRC(crcResetValue int, buffer []byte, duration time.Duration) ([]byte, error) {
+
+	switch crcResetValue {
+	case 0x0:
+		r.PCD_WriteRegister(ModeReg, 0x00)
+	case iso14443.ISO_14443_CRC_RESET:
+		r.PCD_WriteRegister(ModeReg, 0x3d)
+	case 0xa671:
+		r.PCD_WriteRegister(ModeReg, 0x3e)
+	case 0xffff:
+		r.PCD_WriteRegister(ModeReg, 0x3f)
+	default:
+		return nil, iso14443.CommonError(fmt.Sprintf("Unexpected crcResetValue: %h", crcResetValue))
+	}
 
 	// Stop any active command.
 	if err := r.PCD_WriteRegister(CommandReg, PCD_Idle); err != nil {
@@ -520,7 +533,6 @@ func (r *MFRC522) PCD_Init() error { // TODO error processing
 	r.PCD_WriteRegister(ModWidthReg, 0x26)
 
 	r.PCD_WriteRegister(TxASKReg, 0x40) // Default 0x00. Force a 100 % ASK modulation independent of the ModGsPReg register setting
-	r.PCD_WriteRegister(ModeReg, 0x3D)  // Default 0x3F. Set the preset value for the CRC coprocessor for the CalcCRC command to 0x6363 (ISO 14443-3 part 6.2.4)
 	//r.PCD_AntennaOn()                   // Enable the antenna driver pins TX1 and TX2 (they were disabled by the reset)
 
 	return nil

@@ -23,13 +23,13 @@ func GenerateNUID(uid iso14443.UID, device iso14443.PCDDevice) (nuid []byte, err
 		nuid = buff.Bytes()
 	case 7: // 	Double Size UID
 		var crc []byte
-		if crc, err = device.PCD_CalculateCRC(uid.Uid[:3], iso14443.INTERUPT_TIMEOUT); err != nil {
+		if crc, err = device.PCD_CalculateCRC(iso14443.ISO_14443_CRC_RESET, uid.Uid[:3], iso14443.INTERUPT_TIMEOUT); err != nil {
 			return
 		}
 		buff.WriteByte((crc[0] | 0x0f) & 0xff)
 		buff.WriteByte(crc[1])
 
-		if crc, err = device.PCD_CalculateCRC(uid.Uid[3:], iso14443.INTERUPT_TIMEOUT); err != nil {
+		if crc, err = device.PCD_CalculateCRC(iso14443.ISO_14443_CRC_RESET, uid.Uid[3:], iso14443.INTERUPT_TIMEOUT); err != nil {
 			return
 		}
 		buff.Write(crc)

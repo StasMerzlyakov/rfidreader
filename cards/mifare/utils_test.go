@@ -18,7 +18,7 @@ type Fn_PCD_CommunicateWithPICC func(dataToSend []byte,
 
 type Fn_PCD_IsCollisionOccure func() (bool, error)
 
-type Fn_PCD_CalculateCRC func(buffer []byte, duration time.Duration) ([]byte, error)
+type Fn_PCD_CalculateCRC func(crcResetValue int, buffer []byte, duration time.Duration) ([]byte, error)
 
 type Fn_PCD_Init func() error
 
@@ -53,8 +53,8 @@ func (m *MockISO14443Device) PCD_IsCollisionOccure() (bool, error) {
 	return m.isCollisionOccureHandler()
 }
 
-func (m *MockISO14443Device) PCD_CalculateCRC(buffer []byte, duration time.Duration) ([]byte, error) {
-	return m.calculateCRCHandler(buffer, duration)
+func (m *MockISO14443Device) PCD_CalculateCRC(crcResetValue int, buffer []byte, duration time.Duration) ([]byte, error) {
+	return m.calculateCRCHandler(crcResetValue, buffer, duration)
 }
 
 func (m *MockISO14443Device) PCD_Init() error {
@@ -80,7 +80,7 @@ func (m *MockISO14443Device) PCD_AntennaOff() error {
 func TestGenerateNUID(t *testing.T) {
 	is := is.New(t)
 	device := &MockISO14443Device{
-		calculateCRCHandler: func(buffer []byte, duration time.Duration) ([]byte, error) {
+		calculateCRCHandler: func(crcResetValue int, buffer []byte, duration time.Duration) ([]byte, error) {
 
 			if len(buffer) < 2 {
 				return []byte{0x0, 0x0}, nil
