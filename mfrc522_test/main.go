@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"os"
-	"rfidreader/iso14443"
 	"rfidreader/mfrc522"
 	"time"
 
@@ -156,7 +155,7 @@ func run() int {
 	arr := make([]byte, 63)
 	for i := 0; i < 10; i++ {
 		// crcValue 0xffff - default value
-		if result, err := mfrc522dev.PCD_CalculateCRC(0xffff, arr, iso14443.INTERUPT_TIMEOUT); err != nil {
+		if result, err := mfrc522dev.PCD_CalculateCRC(mfrc522.CRC_RESET_VALUE_FFFF, arr, mfrc522.INTERUPT_TIMEOUT); err != nil {
 			log.Printf(err.Error())
 			return 1
 		} else {
@@ -170,7 +169,7 @@ func run() int {
 		return 1
 	}
 
-	driver := iso14443.NewISO14443Driver(mfrc522dev)
+	//driver := iso14443.NewISO14443Driver(mfrc522dev)
 
 	mfrc522dev.PCD_Init()
 	defer mfrc522dev.PCD_AntennaOff()
@@ -179,11 +178,11 @@ func run() int {
 		if err := mfrc522dev.PCD_AntennaOn(); err != nil {
 			log.Printf("mfrc522dev.PCD_AntennaOn error %s\n", err.Error())
 		}
-		val := driver.PICC_IsNewCardPresent()
+		val := mfrc522dev.PICC_IsNewCardPresent()
 		log.Printf("IsNewCardPresent %t", val)
 		if val {
 			log.Printf("    Try select card\n")
-			if uid, err := driver.PICC_Select(); err != nil {
+			if uid, err := mfrc522dev.PICC_Select(); err != nil {
 				log.Printf(err.Error())
 			} else {
 				log.Printf("Found card:\n")
