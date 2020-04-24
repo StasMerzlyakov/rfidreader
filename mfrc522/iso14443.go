@@ -41,3 +41,16 @@ type UID struct {
 	Sak     byte   // The SAK (Select acknowledge) byte returned from the PICC after successful selection
 	PicType PICC_TYPE
 }
+
+// Calculate an ISO 14443a CRC. Code translated from the code in
+// iso14443a_crc().
+func ISO14443aCRC(data []byte) []byte {
+	crc := uint32(0x6363)
+	for _, bt := range data {
+		bt ^= uint8(crc & 0xff)
+		bt ^= bt << 4
+		bt32 := uint32(bt)
+		crc = (crc >> 8) ^ (bt32 << 8) ^ (bt32 << 3) ^ (bt32 >> 4)
+	}
+	return []byte{byte(crc & 0xff), byte((crc >> 8) & 0xff)}
+}

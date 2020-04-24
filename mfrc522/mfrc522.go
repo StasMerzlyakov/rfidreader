@@ -393,7 +393,7 @@ func (r *MFRC522) PCD_CalculateCRC(crcResetValue int, buffer []byte, duration ti
 	case CRC_RESET_VALUE_FFFF:
 		r.PCD_WriteRegister(ModeReg, 0x3f)
 	default:
-		return nil, CommonError(fmt.Sprintf("Unexpected crcResetValue: %h", crcResetValue))
+		return nil, CommonError(fmt.Sprintf("Unexpected crcResetValue: %x", crcResetValue))
 	}
 
 	// Stop any active command.

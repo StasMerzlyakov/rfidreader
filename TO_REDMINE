@@ -204,3 +204,10 @@ CT + UID0...UID2
 // Структура карт
 http://kb.supremainc.com/knowledge/doku.php?id=en:1xfaq_how_to_configure_mifare_card_memory_layout
 
+
+
+// Авторизация MIFARE
+
+1. Запрос PCD: 60 30 76 4a (auth(30) + crc)
+2. Ответ PICC: 42 97 c0 a4 (n_t + crc)
+3.   
