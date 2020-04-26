@@ -21,14 +21,11 @@ func (m *MockISO14443Device) PCD_CalculateCRC(crcResetValue int, buffer []byte, 
 }
 func TestGenerateNUID(t *testing.T) {
 	is := is.New(t)
+
 	device := &MockISO14443Device{
 		calculateCRCHandler: func(crcResetValue int, buffer []byte, duration time.Duration) ([]byte, error) {
-
-			if len(buffer) < 2 {
-				return []byte{0x0, 0x0}, nil
-			}
-			log.Printf("[% x]", buffer[:2])
-			return buffer[:2], nil
+			result := mfrc522.ISO14443aCRC(buffer)
+			return result, nil
 		},
 	}
 
@@ -46,6 +43,6 @@ func TestGenerateNUID(t *testing.T) {
 
 	nuid, err = GenerateNUID(uid, device)
 	is.NoErr(err)
-	is.True(bytes.Compare(nuid, []byte{0x1f, 0x20, 0x40, 0x50}) == 0)
+	is.True(bytes.Compare(nuid, []byte{0x3f, 0x32, 0x86, 0xd5}) == 0)
 
 }

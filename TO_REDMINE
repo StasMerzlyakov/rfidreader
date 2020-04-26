@@ -207,7 +207,9 @@ http://kb.supremainc.com/knowledge/doku.php?id=en:1xfaq_how_to_configure_mifare_
 
 
 // Авторизация MIFARE
+"A Practical Attack on the MIFARE Classic" Gerhard de Koning Gans, Jaap-Henk Hoepman, and Flavio D. Garcia
 
 1. Запрос PCD: 60 30 76 4a (auth(30) + crc)
-2. Ответ PICC: 42 97 c0 a4 (n_t + crc)
-3.   
+2. Ответ PICC: 42 97 c0 a4 (n_t(tag nonce) - 2 байта от ГСПЦ + 2 байта из L16 )
+3. Запрос PCD: 7d db 9b 83 67 eb 5d 83  (8 байт)
+4. Ответ PICC: 8b d4 10 08 

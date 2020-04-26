@@ -2,7 +2,7 @@ package main
 
 import (
 	"log"
-	_ "os"
+	"os"
 	"rfidreader/mfrc522"
 	"time"
 
@@ -185,6 +185,9 @@ func run() int {
 			if uid, err := mfrc522dev.PICC_Select(); err != nil {
 				log.Printf(err.Error())
 			} else {
+
+				mfrc522dev.PICC_AuthentificateKeyA([]byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}, 30)
+
 				log.Printf("Found card:\n")
 				log.Printf("    uid: [% x]\n", uid.Uid)
 				log.Printf("    sak: %08b\n", uid.Sak)
@@ -204,6 +207,16 @@ func run() int {
 }
 
 func main() {
-	log.Printf(" [% x]\n", mfrc522.ISO14443aCRC([]byte{0x8b, 0xd4}))
-	//os.Exit(run())
+	//log.Printf(" [% x]\n", mfrc522.ISO14443aCRC([]byte{0x60, 0x04}))
+	os.Exit(run())
+
+	// nt 42 97 c0 74      // по документам так: !! c0 a4
+	// nt 3b ae 03 2d      // по документам так: !! 03 ed
+	// nt 01 20 01 45      // с токена
+
+	//	f := mfrc522.PICC_InitLfsr16FN(0x0120)
+
+	//log.Printf(" %x\n", f(16))
+
+	//log.Printf(" [% x]\n", mfrc522.ISO14443aCRC([]byte{0x60, 0x04}))
 }
