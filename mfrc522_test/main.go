@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+
 	"os"
 	"rfidreader/mfrc522"
 	"time"
@@ -207,16 +208,5 @@ func run() int {
 }
 
 func main() {
-	//log.Printf(" [% x]\n", mfrc522.ISO14443aCRC([]byte{0x60, 0x04}))
 	os.Exit(run())
-
-	// nt 42 97 c0 74      // по документам так: !! c0 a4
-	// nt 3b ae 03 2d      // по документам так: !! 03 ed
-	// nt 01 20 01 45      // с токена
-
-	//	f := mfrc522.PICC_InitLfsr16FN(0x0120)
-
-	//log.Printf(" %x\n", f(16))
-
-	//log.Printf(" [% x]\n", mfrc522.ISO14443aCRC([]byte{0x60, 0x04}))
 }

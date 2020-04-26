@@ -156,9 +156,6 @@ type MFRC522 struct {
 
 type IRQCallbackFn func()
 
-// LFSR16 Implementation
-type Lfsr16FN func(cnt int) uint16
-
 func NewMFRC522(spiPort spi.Port, resetPin gpio.PinOut, irqPin gpio.PinIn) (*MFRC522, error) {
 
 	if resetPin == nil {
@@ -863,6 +860,9 @@ func (r *MFRC522) PICC_AuthentificateKeyA(key []byte, sector byte) error {
 	crc := ISO14443aCRC(buffer)
 	buffer = append(buffer, crc...)
 	validBits := byte(0)
+	log.Printf("????\n")
+	time.Sleep(time.Duration(rand.Intn(10)) * time.Second)
+	log.Printf("!!!!\n")
 	if result, err := r.PCD_CommunicateWithPICC(PCD_Transceive, buffer, &validBits, INTERUPT_TIMEOUT); err != nil {
 		return err
 	} else {
@@ -870,17 +870,4 @@ func (r *MFRC522) PICC_AuthentificateKeyA(key []byte, sector byte) error {
 	}
 
 	return nil
-}
-
-func PICC_InitLfsr16FN(init uint16) Lfsr16FN {
-	var state = init
-	return func(cnt int /* cricle count */) uint16 {
-		val := uint16(0)
-		for i := 0; i < cnt; i++ {
-			bit := state&0x1 ^ (state & 0x4 >> 2) ^ (state & 0x8 >> 3) ^ (state & 0x20 >> 5)
-			val |= (bit << i)
-			state = (state>>1)&0x7FFF | (state<<15)&0x8000
-		}
-		return val
-	}
 }
