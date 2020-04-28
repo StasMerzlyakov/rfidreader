@@ -2,7 +2,6 @@ package mfrc522
 
 import (
 	"bytes"
-	"log"
 	"testing"
 	"time"
 
@@ -51,6 +50,7 @@ func TestLfsr16FN(t *testing.T) {
 
 	test_data := map[uint16]uint16{
 		0x4297: 0xc0a4,
+		//0x3bae: 0x03ed,
 		0x0120: 0x0145,
 		0x4ca3: 0xec7a,
 		0x6876: 0x8c86,
@@ -60,12 +60,12 @@ func TestLfsr16FN(t *testing.T) {
 	}
 
 	for k, v := range test_data {
-		f := InitLfsr16FN(k)
-		res := f(16)
-		if res != v {
-			log.Printf("k=%x v=%x res=%x", k, v, res)
-		}
-		is.True(res == v)
-	}
 
+		input := []byte{byte(k & 0xff00 >> 8), byte(k & 0xff)}
+		output := []byte{byte(v & 0xff00 >> 8), byte(v & 0xff)}
+
+		f16 := InitLfsr16FN(input)
+		res1, _ := f16()
+		is.True(bytes.Compare(res1, output) == 0)
+	}
 }

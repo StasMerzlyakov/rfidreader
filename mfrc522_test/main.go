@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
+	"encoding/binary"
+	"fmt"
 	"log"
-
-	"os"
+	_ "os"
 	"rfidreader/mfrc522"
 	"time"
 
@@ -208,5 +210,16 @@ func run() int {
 }
 
 func main() {
-	os.Exit(run())
+	//os.Exit(run())
+
+	val := uint16(0x0145)
+	fmt.Printf("%016b\n", val)
+
+	buf := new(bytes.Buffer)
+
+	binary.Write(buf, binary.LittleEndian, &val)
+
+	fmt.Printf("% x\n", buf.Bytes())
+
+	//log.Printf(state)
 }

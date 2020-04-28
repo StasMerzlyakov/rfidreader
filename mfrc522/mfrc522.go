@@ -12,7 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"math/rand"
+	_ "math/rand"
 	"time"
 
 	"periph.io/x/periph/conn/gpio"
@@ -785,6 +785,7 @@ func (r *MFRC522) selectLevel(clevel int /* Cascade level */, duration time.Dura
 
 /**
  * Initialization and anticollision cycle ISO/IEC 14443-3:2011
+ * BIG ENDIAN !!!
  */
 func (r *MFRC522) PICC_Select() (uid *UID, err error) {
 	// Expected that RequestA sended by method PICC_IsNewCardPresent
@@ -860,12 +861,12 @@ func (r *MFRC522) PICC_AuthentificateKeyA(key []byte, sector byte) error {
 	crc := ISO14443aCRC(buffer)
 	buffer = append(buffer, crc...)
 	validBits := byte(0)
-	log.Printf("????\n")
-	time.Sleep(time.Duration(rand.Intn(10)) * time.Second)
-	log.Printf("!!!!\n")
 	if result, err := r.PCD_CommunicateWithPICC(PCD_Transceive, buffer, &validBits, INTERUPT_TIMEOUT); err != nil {
 		return err
 	} else {
+
+		// BIG ENDIAN !!!
+
 		fmt.Printf("n_t: [% x]\n", result)
 	}
 
