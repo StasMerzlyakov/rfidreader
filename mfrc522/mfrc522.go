@@ -865,8 +865,6 @@ func (r *MFRC522) PICC_AuthentificateKeyA(key []byte, sector byte) error {
 		return err
 	} else {
 
-		// BIG ENDIAN !!!
-
 		fmt.Printf("n_t: [% x]\n", result)
 	}
 

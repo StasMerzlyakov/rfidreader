@@ -213,6 +213,6 @@ MIFARE - BIG ENDIAN!!!
 
 
 1. Запрос PCD: 60 30 76 4a (auth(30) + crc)
-2. Ответ PICC: 42 97 c0 a4 (n_t(tag nonce) - 2 байта от ГСПЦ + 2 байта из L16 )
-3. Запрос PCD: 7d db 9b 83 67 eb 5d 83  (8 байт)
+2. Ответ PICC: 42 97 c0 a4 (nT(tag nonce) - (2 байта от ГСПЦ + 2 байта из LSRL16))
+3. Запрос PCD: 7d db 9b 83 67 eb 5d 83  ( nR ⊕ ks1, suc2(nT ) ⊕ ks2 )
 4. Ответ PICC: 8b d4 10 08 
