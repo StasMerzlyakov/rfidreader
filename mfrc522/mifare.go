@@ -130,15 +130,12 @@ func Fb(x3, x2, x1, x0 byte) byte {
 	return f4(0xb48e, x3, x2, x1, x0)
 }
 
-func InitLfsr32FN(key []byte, uid []byte, nt []byte) Lfsr32FN {
+func InitLfsr32FN(key []byte) Lfsr32FN {
 
 	// BIT ORDER relative implementation
 	// Little endian !!!
 	var state = uint64(key[0]) | uint64(key[1])<<8 | uint64(key[2])<<16 |
 		uint64(key[3])<<24 | uint64(key[4])<<32 | uint64(key[5])<<40
-
-	init := uint32(uid[0]^nt[0]) | uint32(uid[1]^nt[1])<<8 |
-		uint32(uid[2]^nt[2])<<16 | uint32(uid[3]^nt[3]<<24)
 
 	var lsfrN = func() uint64 {
 		return state&0x1 ^ (state & 0x1 >> 5) ^ (state & 0x1 >> 9) ^ (state & 0x1 >> 10) ^
@@ -148,22 +145,85 @@ func InitLfsr32FN(key []byte, uid []byte, nt []byte) Lfsr32FN {
 			(state & 0x1 >> 43)
 	}
 
-	// Initialization cycle
-	for i := 0; i < 32; i++ {
-		bit := lsfrN()&0x1 ^ uint64(init&0x1)
-		init = init >> 1
-		state = (state>>1)&0x7FFFFF | (bit<<47)&0x800000
+	var f_4 = func() byte {
+		x0 := byte((state & 0x1 >> 9) >> 9)
+		x1 := byte((state & 0x1 >> 11) >> 11)
+		x2 := byte((state & 0x1 >> 13) >> 13)
+		x3 := byte((state & 0x1 >> 15) >> 15)
+		return Fa(x3, x2, x1, x0)
 	}
 
-	return func(input []byte) ([]byte, error) {
-		val := uint16(0)
-		for i := 0; i < 16; i++ {
-			bit := uint64((state & 0x20 >> 5) ^ (state & 0x8 >> 3) ^ (state & 0x4 >> 2) ^ state&0x1)
-			val = val | bit<<i
-			//val = val<<1 | bit
-			state = (state>>1)&0x7FFF | (bit<<15)&0x8000
-		}
-		return []byte{byte(val & 0x00ff), byte(val & 0xff00 >> 8)}, nil
+	var f_3 = func() byte {
+		x0 := byte((state & 0x1 >> 17) >> 17)
+		x1 := byte((state & 0x1 >> 19) >> 19)
+		x2 := byte((state & 0x1 >> 21) >> 21)
+		x3 := byte((state & 0x1 >> 23) >> 23)
+		return Fb(x3, x2, x1, x0)
 	}
-	return nil
+
+	var f_2 = func() byte {
+		x0 := byte((state & 0x1 >> 25) >> 25)
+		x1 := byte((state & 0x1 >> 27) >> 27)
+		x2 := byte((state & 0x1 >> 29) >> 29)
+		x3 := byte((state & 0x1 >> 31) >> 31)
+		return Fb(x3, x2, x1, x0)
+	}
+
+	var f_1 = func() byte {
+		x0 := byte((state & 0x1 >> 33) >> 33)
+		x1 := byte((state & 0x1 >> 35) >> 35)
+		x2 := byte((state & 0x1 >> 37) >> 37)
+		x3 := byte((state & 0x1 >> 39) >> 39)
+		return Fa(x3, x2, x1, x0)
+	}
+
+	var f_0 = func() byte {
+		x0 := byte((state & 0x1 >> 41) >> 41)
+		x1 := byte((state & 0x1 >> 43) >> 43)
+		x2 := byte((state & 0x1 >> 45) >> 45)
+		x3 := byte((state & 0x1 >> 47) >> 47)
+		return Fb(x3, x2, x1, x0)
+	}
+
+	var f = func() byte {
+		return Fc(f_4(), f_3(), f_2(), f_1(), f_0())
+	}
+
+	var round = 0
+
+	return func(input []byte) ([]byte, error) {
+
+		result := make([]byte, len(input))
+		if round <= 63 {
+			if len(input) != 32 {
+				return nil, UsageError("Unexpected length")
+			}
+
+			init := uint32(input[0]) | uint32(input[1])<<8 |
+				uint32(input[2])<<16 | uint32(input[3]<<24)
+
+			for i := 0; i < 32; i++ {
+				bit := lsfrN()&0x1 ^ uint64(init&0x1)
+				init = init >> 1
+				state = (state>>1)&0x7FFFFF | (bit<<47)&0x800000
+				round += 1
+				cell := i / 8
+				pos := i % 8
+				result[cell] = result[cell] | (f() & 0x1 << pos)
+			}
+		} else {
+
+			// Столько раундов, сколько длина входного массива
+			for i := 0; i < len(input); i++ {
+				bit := lsfrN() & 0x1
+				state = (state>>1)&0x7FFFFF | (bit<<47)&0x800000
+				round += 1
+				cell := i / 8
+				pos := i % 8
+				result[cell] = result[cell] | (f() & 0x1 << pos)
+			}
+		}
+		return result, nil
+	}
+
 }

@@ -43,3 +43,7 @@ func CommonError(desc string) error {
 func CRCCheckError(desc string) error {
 	return iso14443Error{errors.New(desc)}
 }
+
+func UsageError(desc string) error {
+	return mfrc522Error{errors.New(desc)}
+}

@@ -856,16 +856,41 @@ func (r *MFRC522) PICC_RequestWUPA() ([]byte, error) {
 	return r.PCD_CommunicateWithPICC(PCD_Transceive, []byte{PICC_CMD_WUPA}, &validBits, INTERUPT_TIMEOUT)
 }
 
-func (r *MFRC522) PICC_AuthentificateKeyA(key []byte, sector byte) error {
+func (r *MFRC522) PICC_AuthentificateKeyA(uid UID, key []byte, sector byte) error {
 	buffer := []byte{PICC_CMD_MF_AUTH_KEY_A, sector}
 	crc := ISO14443aCRC(buffer)
 	buffer = append(buffer, crc...)
 	validBits := byte(0)
-	if result, err := r.PCD_CommunicateWithPICC(PCD_Transceive, buffer, &validBits, INTERUPT_TIMEOUT); err != nil {
+	if nt, err := r.PCD_CommunicateWithPICC(PCD_Transceive, buffer, &validBits, INTERUPT_TIMEOUT); err != nil {
 		return err
 	} else {
+		fmt.Printf("n_t: [% x]\n", nt)
 
-		fmt.Printf("n_t: [% x]\n", result)
+		init := make([]byte, 4)
+		init[0] = uid.Uid[0] ^ nt[0]
+		init[1] = uid.Uid[1] ^ nt[1]
+		init[2] = uid.Uid[2] ^ nt[2]
+		init[3] = uid.Uid[3] ^ nt[3]
+
+		// инициализируем регистр линейного сдвига
+		lfsr32 := InitLfsr32FN(key)
+
+		// генерируем ключ ks1
+		ks1 := lfsr32(init)
+
+		// генерируем nr
+		nr := GenerateNR()
+
+		// формируем nr^ks1
+		input := make(byte[], 4)
+		input[0]= ks1[0]^nr[0]
+		input[1]= ks1[1]^nr[1]
+		input[2]= ks1[2]^nr[2]
+		input[3]= ks1[3]^nr[3]
+
+		ks2 := lfsr32(nr)
+				
+		
 	}
 
 	return nil
