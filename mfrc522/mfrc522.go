@@ -882,13 +882,26 @@ func (r *MFRC522) PICC_AuthentificateKeyA(uid UID, key []byte, sector byte) erro
 		nr := GenerateNR()
 
 		// формируем nr^ks1
-		input := make(byte[], 4)
-		input[0]= ks1[0]^nr[0]
-		input[1]= ks1[1]^nr[1]
-		input[2]= ks1[2]^nr[2]
-		input[3]= ks1[3]^nr[3]
+		buffer = make(byte[], 8)
+		buffer[0]= ks1[0]^nr[0]
+		buffer[1]= ks1[1]^nr[1]
+		buffer[2]= ks1[2]^nr[2]
+		buffer[3]= ks1[3]^nr[3]
 
+		// формируем вторую часть
 		ks2 := lfsr32(nr)
+		
+		suc := InitSuc(nt)
+		ackR := sunc()
+		
+		// формируем ackR^ks2
+		buffer[4]= ks2[0]^acrR[0]
+		buffer[5]= ks2[1]^acrR[1]
+		buffer[6]= ks2[2]^acrR[2]
+		buffer[7]= ks2[3]^acrR[3]
+
+		// TODO - отправить на MIFARE 
+		// Attack.MIFARE.pdf
 				
 		
 	}
