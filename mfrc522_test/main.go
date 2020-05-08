@@ -189,7 +189,7 @@ func run() int {
 				log.Printf(err.Error())
 			} else {
 
-				mfrc522dev.PICC_AuthentificateKeyA([]byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}, 30)
+				mfrc522dev.PICC_AuthentificateKeyA(*uid, []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}, 30)
 
 				log.Printf("Found card:\n")
 				log.Printf("    uid: [% x]\n", uid.Uid)
@@ -221,18 +221,75 @@ func main() {
 
 	fmt.Printf("% x\n", buf.Bytes())*/
 
-	uid := uint32(0)
-	for u := 31; u >= 0; u-- {
+	/*uid := uint32(0)
+	uid1 := uint32(0)
+	for u := 0; u < 16; u++ {
 		x0 := byte(u & 1)
 		x1 := byte(u&(1<<1)) >> 1
 		x2 := byte(u&(1<<2)) >> 2
 		x3 := byte(u&(1<<3)) >> 3
-		x4 := byte(u&(1<<4)) >> 4
-		y := mfrc522.Fc(x4, x3, x2, x1, x0)
-		//		y := mfrc522.F2(0x4457c3b3, x4, x3, x2, x1, x0)
+		y := mfrc522.Fb(x3, x2, x1, x0)
+
+		// Fa ((y0 ∨y1)⊕(y0 ∧y3))⊕ (y2 ∧((y0 ⊕y1)∨y3))
+		//y1 := ((x0 | x1) ^ (x0 & x3)) ^ (x2 & ((x0 ^ x1) | x3))
+
+		// Fb ((y0 ∧y1)∨y2)⊕ ((y0 ⊕y1)∧(y2 ∨y3))
+		y1 := ((x0 & x1) | x2) ^ ((x0 ^ x1) & (x2 | x3))
+
 		uid |= uint32((y & 1)) << u
-		log.Printf("%01b%01b%01b%01b%01b = %01b\n", x4, x3, x2, x1, x0, y)
+		uid1 |= uint32((y1 & 1)) << u
+		log.Printf("%01b%01b%01b%01b = %01b %01b\n", x3, x2, x1, x0, y, y1)
 	}
 
-	log.Printf("%x\n", uid)
+	log.Printf("%x %x\n", uid, uid1) */
+
+	/*uidVal := []byte{0x2a, 0x69, 0x83, 0x43}
+	uid := mfrc522.UID{Uid: uidVal}
+
+	nt := []byte{0x3b, 0xae, 0x03, 0x2d}
+
+	key := []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
+
+	init := make([]byte, 4)
+	init[0] = uid.Uid[0] ^ nt[0]
+	init[1] = uid.Uid[1] ^ nt[1]
+	init[2] = uid.Uid[2] ^ nt[2]
+	init[3] = uid.Uid[3] ^ nt[3]
+
+	// инициализируем регистр линейного сдвига
+	lfsr32 := mfrc522.InitLfsr32FN(key)
+
+	// генерируем ключ ks1
+	ks1, _ := lfsr32(init)
+	log.Printf("ks1: [% x]\n", ks1)
+
+	// генерируем n_r
+	n_r := mfrc522.GenerateNR()
+	log.Printf("n_r: [% x]\n", n_r)
+
+	// формируем n_r^ks1
+	buffer := make([]byte, 8)
+	buffer[0] = ks1[0] ^ n_r[0]
+	buffer[1] = ks1[1] ^ n_r[1]
+	buffer[2] = ks1[2] ^ n_r[2]
+	buffer[3] = ks1[3] ^ n_r[3]
+
+	// формируем вторую часть
+	ks2, _ := lfsr32(n_r)
+	log.Printf("ks2: [% x]\n", ks2)
+
+	suc := mfrc522.InitSuc(nt)
+	ackR, _ := suc()
+	log.Printf("ackR: [% x]\n", ackR)
+
+	// формируем ackR^ks2
+	buffer[4] = ks2[0] ^ ackR[0]
+	buffer[5] = ks2[1] ^ ackR[1]
+	buffer[6] = ks2[2] ^ ackR[2]
+	buffer[7] = ks2[3] ^ ackR[3]
+
+	log.Printf("buffer: [% x]\n", buffer)
+
+	*/
+
 }

@@ -4,6 +4,7 @@ package mfrc522
 
 import (
 	"bytes"
+	_ "log"
 	"math/rand"
 	"time"
 )
@@ -112,15 +113,14 @@ func InitSuc(init []byte) SucFn {
 	var state = uint32(init[0]) | uint32(init[1])<<8 | uint32(init[2])<<16 | uint32(init[3])<<24
 
 	return func() ([]byte, error) {
-
 		for i := 0; i < 32; i++ {
-			bit := ((state & 0x1 << 21) >> 21) ^ ((state & 0x1 << 19) >> 19) ^
-				((state & 0x1 << 18) >> 18) ^ ((state & 0x1 << 16) >> 16)
+			bit := (state & (0x1 << 21) >> 21) ^ (state & (0x1 << 19) >> 19) ^
+				(state & (0x1 << 18) >> 18) ^ (state & (0x1 << 16) >> 16)
 			state = (state>>1)&0x7FFFFFFF | (bit<<31)&0x80000000
 		}
 
-		return []byte{byte(state & 0xFF), byte((state & 0xFF00) >> 8),
-			byte((state & 0xFF0000) >> 16), byte((state & 0xFF000000) >> 24)}
+		return []byte{byte(state & 0xFF), byte(state & (0xFF << 8) >> 8),
+			byte(state & (0xFF << 16) >> 16), byte(state & (0xFF << 24) >> 24)}, nil
 	}
 }
 
@@ -141,16 +141,19 @@ func f5(rcode uint32, x4, x3, x2, x1, x0 byte) byte {
 	return byte(((rcode & (uint32(1) << uid)) >> uid) & 1)
 }
 
-func Fc(x4, x3, x2, x1, x0 byte) byte {
-	return f5(0xec57e80a, x4, x3, x2, x1, x0)
+func Fc(y0, y1, y2, y3, y4 byte) byte {
+	// Fc (y0∨((y1 ∨y4)∧(y3⊕y4)))⊕((y0⊕(y1∧y3))∧((y2⊕y3)∨(y1∧y4)))
+	return f5(0xec57e80a, y0, y1, y2, y3, y4)
 }
 
-func Fa(x3, x2, x1, x0 byte) byte {
-	return f4(0x9e98, x3, x2, x1, x0)
+func Fa(y0, y1, y2, y3 byte) byte {
+	// Fa ((y0∨y1)⊕(y0 ∧y3))⊕(y2∧((y0⊕y1)∨y3))
+	return f4(0xb48e, y0, y1, y2, y3)
 }
 
-func Fb(x3, x2, x1, x0 byte) byte {
-	return f4(0xb48e, x3, x2, x1, x0)
+func Fb(y0, y1, y2, y3 byte) byte {
+	// Fb ((y0∧y1)∨y2)⊕((y0⊕y1)∧(y2∨y3))
+	return f4(0x9e98, y0, y1, y2, y3)
 }
 
 func InitLfsr32FN(key []byte) Lfsr32FN {
@@ -161,90 +164,100 @@ func InitLfsr32FN(key []byte) Lfsr32FN {
 		uint64(key[3])<<24 | uint64(key[4])<<32 | uint64(key[5])<<40
 
 	var lsfrN = func() uint64 {
-		return state&0x1 ^ ((state & 0x1 << 5) >> 5) ^ ((state & 0x1 << 9) >> 9) ^
-			((state & 0x1 << 10) >> 10) ^ ((state & 0x1 << 12) >> 12) ^ ((state & 0x1 << 14) >> 14) ^
-			((state & 0x1 << 15) >> 15) ^ ((state & 0x1 << 17) >> 17) ^ ((state & 0x1 << 19) >> 19) ^
-			((state & 0x1 << 24) >> 24) ^ ((state & 0x1 << 27) >> 27) ^ ((state & 0x1 << 29) >> 29) ^
-			((state & 0x1 << 35) >> 35) ^ ((state & 0x1 << 39) >> 39) ^ ((state & 0x1 << 41) >> 41) ^
-			((state & 0x1 << 42) >> 42) ^ ((state & 0x1 << 43) >> 43)
-	}
-
-	var f_4 = func() byte {
-		x0 := byte((state & 0x1 << 9) >> 9)
-		x1 := byte((state & 0x1 << 11) >> 11)
-		x2 := byte((state & 0x1 << 13) >> 13)
-		x3 := byte((state & 0x1 << 15) >> 15)
-		return Fa(x3, x2, x1, x0)
-	}
-
-	var f_3 = func() byte {
-		x0 := byte((state & 0x1 << 17) >> 17)
-		x1 := byte((state & 0x1 << 19) >> 19)
-		x2 := byte((state & 0x1 << 21) >> 21)
-		x3 := byte((state & 0x1 << 23) >> 23)
-		return Fb(x3, x2, x1, x0)
-	}
-
-	var f_2 = func() byte {
-		x0 := byte((state & 0x1 << 25) >> 25)
-		x1 := byte((state & 0x1 << 27) >> 27)
-		x2 := byte((state & 0x1 << 29) >> 29)
-		x3 := byte((state & 0x1 << 31) >> 31)
-		return Fb(x3, x2, x1, x0)
-	}
-
-	var f_1 = func() byte {
-		x0 := byte((state & 0x1 << 33) >> 33)
-		x1 := byte((state & 0x1 << 35) >> 35)
-		x2 := byte((state & 0x1 << 37) >> 37)
-		x3 := byte((state & 0x1 << 39) >> 39)
-		return Fa(x3, x2, x1, x0)
+		return state&0x1 ^ (state & (0x1 << 5) >> 5) ^ (state & (0x1 << 9) >> 9) ^
+			(state & (0x1 << 10) >> 10) ^ (state & (0x1 << 12) >> 12) ^ (state & (0x1 << 14) >> 14) ^
+			(state & (0x1 << 15) >> 15) ^ (state & (0x1 << 17) >> 17) ^ (state & (0x1 << 19) >> 19) ^
+			(state & (0x1 << 24) >> 24) ^ (state & (0x1 << 25) >> 25) ^ (state & (0x1 << 27) >> 27) ^
+			(state & (0x1 << 29) >> 29) ^ (state & (0x1 << 35) >> 35) ^ (state & (0x1 << 39) >> 39) ^
+			(state & (0x1 << 41) >> 41) ^ (state & (0x1 << 42) >> 42) ^ (state & (0x1 << 43) >> 43)
 	}
 
 	var f_0 = func() byte {
-		x0 := byte((state & 0x1 << 41) >> 41)
-		x1 := byte((state & 0x1 << 43) >> 43)
-		x2 := byte((state & 0x1 << 45) >> 45)
-		x3 := byte((state & 0x1 << 47) >> 47)
-		return Fb(x3, x2, x1, x0)
+		y0 := byte(state & (0x1 << 9) >> 9)
+		y1 := byte(state & (0x1 << 11) >> 11)
+		y2 := byte(state & (0x1 << 13) >> 13)
+		y3 := byte(state & (0x1 << 15) >> 15)
+		return Fa(y0, y1, y2, y3)
+	}
+
+	var f_1 = func() byte {
+		y0 := byte(state & (0x1 << 17) >> 17)
+		y1 := byte(state & (0x1 << 19) >> 19)
+		y2 := byte(state & (0x1 << 21) >> 21)
+		y3 := byte(state & (0x1 << 23) >> 23)
+		return Fb(y0, y1, y2, y3)
+	}
+
+	var f_2 = func() byte {
+		y0 := byte(state & (0x1 << 25) >> 25)
+		y1 := byte(state & (0x1 << 27) >> 27)
+		y2 := byte(state & (0x1 << 29) >> 29)
+		y3 := byte(state & (0x1 << 31) >> 31)
+		return Fb(y0, y1, y2, y3)
+	}
+
+	var f_3 = func() byte {
+		y0 := byte(state & (0x1 << 33) >> 33)
+		y1 := byte(state & (0x1 << 35) >> 35)
+		y2 := byte(state & (0x1 << 37) >> 37)
+		y3 := byte(state & (0x1 << 39) >> 39)
+		return Fa(y0, y1, y2, y3)
+	}
+
+	var f_4 = func() byte {
+		y0 := byte(state & (0x1 << 41) >> 41)
+		y1 := byte(state & (0x1 << 43) >> 43)
+		y2 := byte(state & (0x1 << 45) >> 45)
+		y3 := byte(state & (0x1 << 47) >> 47)
+		return Fb(y0, y1, y2, y3)
 	}
 
 	var f = func() byte {
-		return Fc(f_4(), f_3(), f_2(), f_1(), f_0())
+		return Fc(f_0(), f_1(), f_2(), f_3(), f_4())
 	}
 
 	var round = 0
 
 	return func(input []byte) ([]byte, error) {
 
-		result := make([]byte, len(input))
+		var result []byte
+		if input == nil {
+			result = make([]byte, 4)
+		} else {
+			result = make([]byte, len(input))
+		}
+
+		// кол-во раундов
+		rounds := 8 * len(result)
+
 		if round <= 63 {
-			if len(input) != 32 {
+			if len(input) != 4 {
 				return nil, UsageError("Unexpected length")
 			}
 
 			init := uint32(input[0]) | uint32(input[1])<<8 |
 				uint32(input[2])<<16 | uint32(input[3]<<24)
 
-			for i := 0; i < 32; i++ {
+			for i := 0; i < rounds; i++ {
 				bit := lsfrN()&0x1 ^ uint64(init&0x1)
 				init = init >> 1
-				state = (state>>1)&0x7FFFFF | (bit<<47)&0x800000
+				state = (state>>1)&0x7FFFFFFFFFFF | (bit<<47)&0x800000000000
 				round += 1
 				cell := i / 8
 				pos := i % 8
-				result[cell] = result[cell] | (f() & 0x1 << pos)
+				fn := f()
+				result[cell] = result[cell] | (fn & 0x1 << pos)
 			}
 		} else {
-
 			// Столько раундов, сколько длина входного массива
-			for i := 0; i < len(input); i++ {
+			for i := 0; i < rounds; i++ {
 				bit := lsfrN() & 0x1
-				state = (state>>1)&0x7FFFFF | (bit<<47)&0x800000
+				state = (state>>1)&0x7FFFFFFFFFFF | (bit<<47)&0x800000000000
 				round += 1
 				cell := i / 8
 				pos := i % 8
-				result[cell] = result[cell] | (f() & 0x1 << pos)
+				fn := f()
+				result[cell] = result[cell] | (fn & 0x1 << pos)
 			}
 		}
 		return result, nil

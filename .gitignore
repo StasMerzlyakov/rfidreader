@@ -9,3 +9,4 @@ selftest/selftest
 mfrc522/mfrc522
 selftest2/selftest2
 mfrc522_test/mfrc522_test
+*.debug

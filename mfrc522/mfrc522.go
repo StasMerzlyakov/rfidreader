@@ -856,55 +856,70 @@ func (r *MFRC522) PICC_RequestWUPA() ([]byte, error) {
 	return r.PCD_CommunicateWithPICC(PCD_Transceive, []byte{PICC_CMD_WUPA}, &validBits, INTERUPT_TIMEOUT)
 }
 
-func (r *MFRC522) PICC_AuthentificateKeyA(uid UID, key []byte, sector byte) error {
+func (r *MFRC522) PICC_AuthentificateKeyA(uid UID, key []byte, sector byte) (err error) {
 	buffer := []byte{PICC_CMD_MF_AUTH_KEY_A, sector}
 	crc := ISO14443aCRC(buffer)
 	buffer = append(buffer, crc...)
 	validBits := byte(0)
-	if nt, err := r.PCD_CommunicateWithPICC(PCD_Transceive, buffer, &validBits, INTERUPT_TIMEOUT); err != nil {
-		return err
-	} else {
-		fmt.Printf("n_t: [% x]\n", nt)
-
-		init := make([]byte, 4)
-		init[0] = uid.Uid[0] ^ nt[0]
-		init[1] = uid.Uid[1] ^ nt[1]
-		init[2] = uid.Uid[2] ^ nt[2]
-		init[3] = uid.Uid[3] ^ nt[3]
-
-		// инициализируем регистр линейного сдвига
-		lfsr32 := InitLfsr32FN(key)
-
-		// генерируем ключ ks1
-		ks1 := lfsr32(init)
-
-		// генерируем nr
-		nr := GenerateNR()
-
-		// формируем nr^ks1
-		buffer = make(byte[], 8)
-		buffer[0]= ks1[0]^nr[0]
-		buffer[1]= ks1[1]^nr[1]
-		buffer[2]= ks1[2]^nr[2]
-		buffer[3]= ks1[3]^nr[3]
-
-		// формируем вторую часть
-		ks2 := lfsr32(nr)
-		
-		suc := InitSuc(nt)
-		ackR := sunc()
-		
-		// формируем ackR^ks2
-		buffer[4]= ks2[0]^acrR[0]
-		buffer[5]= ks2[1]^acrR[1]
-		buffer[6]= ks2[2]^acrR[2]
-		buffer[7]= ks2[3]^acrR[3]
-
-		// TODO - отправить на MIFARE 
-		// Attack.MIFARE.pdf
-				
-		
+	var nt []byte
+	if nt, err = r.PCD_CommunicateWithPICC(PCD_Transceive, buffer, &validBits, INTERUPT_TIMEOUT); err != nil {
+		return
 	}
+	fmt.Printf("n_t: [% x]\n", nt)
+
+	init := make([]byte, 4)
+	init[0] = uid.Uid[0] ^ nt[0]
+	init[1] = uid.Uid[1] ^ nt[1]
+	init[2] = uid.Uid[2] ^ nt[2]
+	init[3] = uid.Uid[3] ^ nt[3]
+
+	// Инициализируем регистр линейного сдвига
+	lfsr32 := InitLfsr32FN(key)
+
+	// Генерируем ключ ks1
+	ks1, _ := lfsr32(init)
+
+	// Генерируем nr
+	nr := GenerateNR()
+
+	// Формируем nr^ks1
+	buffer = make([]byte, 8)
+	buffer[0] = ks1[0] ^ nr[0]
+	buffer[1] = ks1[1] ^ nr[1]
+	buffer[2] = ks1[2] ^ nr[2]
+	buffer[3] = ks1[3] ^ nr[3]
+
+	// Формируем вторую часть
+	ks2, _ := lfsr32(nr)
+
+	suc := InitSuc(nt)
+	// нужен suc2()
+	suc()
+	suc2, _ := suc()
+
+	// Формируем suc^ks2
+	buffer[4] = ks2[0] ^ suc2[0]
+	buffer[5] = ks2[1] ^ suc2[1]
+	buffer[6] = ks2[2] ^ suc2[2]
+	buffer[7] = ks2[3] ^ suc2[3]
+	log.Printf("nr^ks1, suc2(nt)^ks2: [% x]\n", buffer)
+
+	suc3, _ := suc()
+	//
+	ks3, _ := lfsr32(nil)
+	expeted := make([]byte, 4)
+	expeted[0] = suc3[0] ^ ks3[0]
+	expeted[1] = suc3[1] ^ ks3[1]
+	expeted[2] = suc3[2] ^ ks3[2]
+	expeted[3] = suc3[3] ^ ks3[3]
+	log.Printf("expected suc3^ks3: [% x]\n", expeted)
+
+	// Отправляем
+	var actual []byte
+	if actual, err = r.PCD_CommunicateWithPICC(PCD_Transceive, buffer, &validBits, INTERUPT_TIMEOUT); err != nil {
+		return
+	}
+	log.Printf("expected suc3^ks3: [% x]\n", actual)
 
 	return nil
 }
