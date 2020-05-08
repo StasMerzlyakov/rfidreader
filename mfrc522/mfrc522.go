@@ -856,6 +856,7 @@ func (r *MFRC522) PICC_RequestWUPA() ([]byte, error) {
 	return r.PCD_CommunicateWithPICC(PCD_Transceive, []byte{PICC_CMD_WUPA}, &validBits, INTERUPT_TIMEOUT)
 }
 
+/*
 func (r *MFRC522) PICC_AuthentificateKeyA(uid UID, key []byte, sector byte) (err error) {
 	buffer := []byte{PICC_CMD_MF_AUTH_KEY_A, sector}
 	crc := ISO14443aCRC(buffer)
@@ -879,8 +880,10 @@ func (r *MFRC522) PICC_AuthentificateKeyA(uid UID, key []byte, sector byte) (err
 	// Генерируем ключ ks1
 	ks1, _ := lfsr32(init)
 
+	log.Printf("ks1 [% x]\n", ks1)
+
 	// Генерируем nr
-	nr := []byte{0x01, 0x20, 0x01, 0x45} //GenerateNR()
+	nr := []byte{0x00, 0x00, 0x00, 0x00} //GenerateNR()
 
 	// Формируем nr^ks1
 	buffer = make([]byte, 8)
@@ -897,7 +900,7 @@ func (r *MFRC522) PICC_AuthentificateKeyA(uid UID, key []byte, sector byte) (err
 	suc()
 	suc2, _ := suc()
 
-	// Формируем suc^ks2
+	// Формируем suc2^ks2
 	buffer[4] = ks2[0] ^ suc2[0]
 	buffer[5] = ks2[1] ^ suc2[1]
 	buffer[6] = ks2[2] ^ suc2[2]
@@ -926,4 +929,10 @@ func (r *MFRC522) PICC_AuthentificateKeyA(uid UID, key []byte, sector byte) (err
 	}
 
 	return nil
+}
+*/
+
+// TODO STANDART FUNCTION
+func (r *MFRC522) PICC_AuthentificateKeyA(uid UID, key []byte, sector byte) (err error) {
+
 }

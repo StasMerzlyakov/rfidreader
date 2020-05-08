@@ -218,11 +218,11 @@ func main() {
 
 	binary.Write(buf, binary.LittleEndian, &val)
 
-	fmt.Printf("% x\n", buf.Bytes())*/
-
+	fmt.Printf("% x\n", buf.Bytes())
+	*/
 	/*uid := uint64(0)
-	uid1 := uint64(0)
-	for u := 0; u < 32; u++ {
+	// /	uid1 := uint32(0)
+	for u := 31; u >= 0; u-- {
 		x0 := byte(u & 1)
 		x1 := byte(u&(1<<1)) >> 1
 		x2 := byte(u&(1<<2)) >> 2
@@ -236,14 +236,15 @@ func main() {
 		// Fb ((y0 ∧y1)∨y2)⊕ ((y0 ⊕y1)∧(y2 ∨y3))
 
 		// Fc (y0 ∨((y1 ∨y4)∧(y3 ⊕y4)))⊕((y0 ⊕(y1 ∧y3))∧((y2 ⊕y3)∨(y1 ∧y4)))
-		y1 := (x0 | ((x1 | x4) & (x3 ^ x4))) ^ ((x0 ^ (x1 & x3)) & ((x2 ^ x3) | (x1 & x4)))
+		//y1 := (x0 | ((x1 | x4) & (x3 ^ x4))) ^ ((x0 ^ (x1 & x3)) & ((x2 ^ x3) | (x1 & x4)))
 
 		uid |= uint64((y & 1)) << u
-		uid1 |= uint64((y1 & 1)) << u
-		log.Printf("%01b%01b%01b%01b = %01b %01b\n", x4, x3, x2, x1, x0, y, y1)
+		//uid1 |= uint64((y1 & 1)) << u
+		log.Printf("%01b%01b%01b%01b%01b = %01b \n", x0, x1, x2, x3, x4, y)
 	}
 
-	log.*/
+	log.Printf("%x\n", uid) */
+
 	/*uidVal := []byte{0x2a, 0x69, 0x83, 0x43}
 	uid := mfrc522.UID{Uid: uidVal}
 
@@ -280,17 +281,26 @@ func main() {
 	log.Printf("ks2: [% x]\n", ks2)
 
 	suc := mfrc522.InitSuc(nt)
-	ackR, _ := suc()
-	log.Printf("ackR: [% x]\n", ackR)
+	// нужен suc2()
+	suc()
+	suc2, _ := suc()
+	log.Printf("ackR: [% x]\n", suc2)
 
 	// формируем ackR^ks2
-	buffer[4] = ks2[0] ^ ackR[0]
-	buffer[5] = ks2[1] ^ ackR[1]
-	buffer[6] = ks2[2] ^ ackR[2]
-	buffer[7] = ks2[3] ^ ackR[3]
+	buffer[4] = ks2[0] ^ suc2[0]
+	buffer[5] = ks2[1] ^ suc2[1]
+	buffer[6] = ks2[2] ^ suc2[2]
+	buffer[7] = ks2[3] ^ suc2[3]
 
 	log.Printf("buffer: [% x]\n", buffer)
+	// Генерируем suc3^ks3
+	suc3, _ := suc()
 
-	*/
-
+	ks3, _ := lfsr32(nil)
+	expeted := make([]byte, 4)
+	expeted[0] = suc3[0] ^ ks3[0]
+	expeted[1] = suc3[1] ^ ks3[1]
+	expeted[2] = suc3[2] ^ ks3[2]
+	expeted[3] = suc3[3] ^ ks3[3]
+	log.Printf("expected suc3^ks3: [% x]\n", expeted) */
 }
