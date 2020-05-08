@@ -221,27 +221,30 @@ func main() {
 
 	fmt.Printf("% x\n", buf.Bytes())*/
 
-	/*uid := uint32(0)
-	uid1 := uint32(0)
-	for u := 0; u < 16; u++ {
+	uid := uint64(0)
+	uid1 := uint64(0)
+	for u := 0; u < 32; u++ {
 		x0 := byte(u & 1)
 		x1 := byte(u&(1<<1)) >> 1
 		x2 := byte(u&(1<<2)) >> 2
 		x3 := byte(u&(1<<3)) >> 3
-		y := mfrc522.Fb(x3, x2, x1, x0)
+		x4 := byte(u&(1<<4)) >> 4
+		y := mfrc522.Fc(x0, x1, x2, x3, x4)
 
 		// Fa ((y0 ∨y1)⊕(y0 ∧y3))⊕ (y2 ∧((y0 ⊕y1)∨y3))
 		//y1 := ((x0 | x1) ^ (x0 & x3)) ^ (x2 & ((x0 ^ x1) | x3))
 
 		// Fb ((y0 ∧y1)∨y2)⊕ ((y0 ⊕y1)∧(y2 ∨y3))
-		y1 := ((x0 & x1) | x2) ^ ((x0 ^ x1) & (x2 | x3))
 
-		uid |= uint32((y & 1)) << u
-		uid1 |= uint32((y1 & 1)) << u
-		log.Printf("%01b%01b%01b%01b = %01b %01b\n", x3, x2, x1, x0, y, y1)
+		// Fc (y0 ∨((y1 ∨y4)∧(y3 ⊕y4)))⊕((y0 ⊕(y1 ∧y3))∧((y2 ⊕y3)∨(y1 ∧y4)))
+		y1 := (x0 | ((x1 | x4) & (x3 ^ x4))) ^ ((x0 ^ (x1 & x3)) & ((x2 ^ x3) | (x1 & x4)))
+
+		uid |= uint64((y & 1)) << u
+		uid1 |= uint64((y1 & 1)) << u
+		log.Printf("%01b%01b%01b%01b = %01b %01b\n", x4, x3, x2, x1, x0, y, y1)
 	}
 
-	log.Printf("%x %x\n", uid, uid1) */
+	log.Printf("%x %x\n", uid, uid1)
 
 	/*uidVal := []byte{0x2a, 0x69, 0x83, 0x43}
 	uid := mfrc522.UID{Uid: uidVal}

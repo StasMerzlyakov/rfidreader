@@ -131,16 +131,20 @@ func InitSuc(init []byte) SucFn {
 	key: key0, key1, key2, key3, key4, key5
 */
 
-func f4(rcode uint16, x3, x2, x1, x0 byte) byte {
+func f4(rcode uint16, x0, x1, x2, x3 byte) byte {
 	uid := uint16((x3&1)<<3) | uint16((x2&1)<<2) | uint16((x1&1)<<1) | uint16(x0&1)
 	return byte(((rcode & (uint16(1) << uid)) >> uid) & 1)
 }
 
-func f5(rcode uint32, x4, x3, x2, x1, x0 byte) byte {
+func f5(rcode uint32, x0, x1, x2, x3, x4 byte) byte {
 	uid := uint32((x4&1)<<4) | uint32((x3&1)<<3) | uint32((x2&1)<<2) | uint32((x1&1)<<1) | uint32(x0&1)
 	return byte(((rcode & (uint32(1) << uid)) >> uid) & 1)
 }
 
+//
+// Dismantling_mifare_classic.pdf
+// MIFARE_CRYPTO.pdf
+//
 func Fc(y0, y1, y2, y3, y4 byte) byte {
 	// Fc (y0∨((y1 ∨y4)∧(y3⊕y4)))⊕((y0⊕(y1∧y3))∧((y2⊕y3)∨(y1∧y4)))
 	return f5(0xec57e80a, y0, y1, y2, y3, y4)
