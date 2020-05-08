@@ -47,3 +47,7 @@ func CRCCheckError(desc string) error {
 func UsageError(desc string) error {
 	return mfrc522Error{errors.New(desc)}
 }
+
+func AuthentificationError(desc string) error {
+	return mfrc522Error{errors.New(desc)}
+}

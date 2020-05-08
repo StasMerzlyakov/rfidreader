@@ -5,7 +5,7 @@ import (
 	_ "encoding/binary"
 	_ "fmt"
 	"log"
-	_ "os"
+	"os"
 	"rfidreader/mfrc522"
 	"time"
 
@@ -188,13 +188,12 @@ func run() int {
 			if uid, err := mfrc522dev.PICC_Select(); err != nil {
 				log.Printf(err.Error())
 			} else {
-
-				mfrc522dev.PICC_AuthentificateKeyA(*uid, []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}, 30)
-
 				log.Printf("Found card:\n")
 				log.Printf("    uid: [% x]\n", uid.Uid)
 				log.Printf("    sak: %08b\n", uid.Sak)
 				log.Printf("    type: %d\n", uid.PicType)
+				mfrc522dev.PICC_AuthentificateKeyA(*uid, []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}, 30)
+
 			}
 		}
 		time.Sleep(time.Millisecond * 500)
@@ -210,7 +209,7 @@ func run() int {
 }
 
 func main() {
-	//os.Exit(run())
+	os.Exit(run())
 
 	/*val := uint16(0x0145)
 	fmt.Printf("%016b\n", val)
@@ -221,7 +220,7 @@ func main() {
 
 	fmt.Printf("% x\n", buf.Bytes())*/
 
-	uid := uint64(0)
+	/*uid := uint64(0)
 	uid1 := uint64(0)
 	for u := 0; u < 32; u++ {
 		x0 := byte(u & 1)
@@ -244,8 +243,7 @@ func main() {
 		log.Printf("%01b%01b%01b%01b = %01b %01b\n", x4, x3, x2, x1, x0, y, y1)
 	}
 
-	log.Printf("%x %x\n", uid, uid1)
-
+	log.*/
 	/*uidVal := []byte{0x2a, 0x69, 0x83, 0x43}
 	uid := mfrc522.UID{Uid: uidVal}
 

@@ -865,7 +865,7 @@ func (r *MFRC522) PICC_AuthentificateKeyA(uid UID, key []byte, sector byte) (err
 	if nt, err = r.PCD_CommunicateWithPICC(PCD_Transceive, buffer, &validBits, INTERUPT_TIMEOUT); err != nil {
 		return
 	}
-	fmt.Printf("n_t: [% x]\n", nt)
+	log.Printf("n_t: [% x]\n", nt)
 
 	init := make([]byte, 4)
 	init[0] = uid.Uid[0] ^ nt[0]
@@ -880,7 +880,7 @@ func (r *MFRC522) PICC_AuthentificateKeyA(uid UID, key []byte, sector byte) (err
 	ks1, _ := lfsr32(init)
 
 	// Генерируем nr
-	nr := GenerateNR()
+	nr := []byte{0x01, 0x20, 0x01, 0x45} //GenerateNR()
 
 	// Формируем nr^ks1
 	buffer = make([]byte, 8)
@@ -904,8 +904,9 @@ func (r *MFRC522) PICC_AuthentificateKeyA(uid UID, key []byte, sector byte) (err
 	buffer[7] = ks2[3] ^ suc2[3]
 	log.Printf("nr^ks1, suc2(nt)^ks2: [% x]\n", buffer)
 
+	// Генерируем suc3^ks3
 	suc3, _ := suc()
-	//
+
 	ks3, _ := lfsr32(nil)
 	expeted := make([]byte, 4)
 	expeted[0] = suc3[0] ^ ks3[0]
@@ -919,7 +920,10 @@ func (r *MFRC522) PICC_AuthentificateKeyA(uid UID, key []byte, sector byte) (err
 	if actual, err = r.PCD_CommunicateWithPICC(PCD_Transceive, buffer, &validBits, INTERUPT_TIMEOUT); err != nil {
 		return
 	}
-	log.Printf("expected suc3^ks3: [% x]\n", actual)
+	log.Printf("actual  suc3^ks3: [% x]\n", actual)
+	if bytes.Compare(actual, expeted) != 0 {
+		return AuthentificationError("Unexpected card result")
+	}
 
 	return nil
 }

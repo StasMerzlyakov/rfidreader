@@ -148,16 +148,20 @@ func f5(rcode uint32, x0, x1, x2, x3, x4 byte) byte {
 func Fc(y0, y1, y2, y3, y4 byte) byte {
 	// Fc (y0∨((y1 ∨y4)∧(y3⊕y4)))⊕((y0⊕(y1∧y3))∧((y2⊕y3)∨(y1∧y4)))
 	return f5(0xec57e80a, y0, y1, y2, y3, y4)
+	//return f5(0x4457c3b3, y0, y1, y2, y3, y4)
 }
 
 func Fa(y0, y1, y2, y3 byte) byte {
 	// Fa ((y0∨y1)⊕(y0 ∧y3))⊕(y2∧((y0⊕y1)∨y3))
 	return f4(0xb48e, y0, y1, y2, y3)
+	//return f4(0x26c7, y0, y1, y2, y3)
 }
 
 func Fb(y0, y1, y2, y3 byte) byte {
 	// Fb ((y0∧y1)∨y2)⊕((y0⊕y1)∧(y2∨y3))
 	return f4(0x9e98, y0, y1, y2, y3)
+	//return f4(0x0dd3^0xFFFF, y0, y1, y2, y3)
+
 }
 
 func InitLfsr32FN(key []byte) Lfsr32FN {
@@ -243,24 +247,24 @@ func InitLfsr32FN(key []byte) Lfsr32FN {
 				uint32(input[2])<<16 | uint32(input[3]<<24)
 
 			for i := 0; i < rounds; i++ {
+				fn := f()
 				bit := lsfrN()&0x1 ^ uint64(init&0x1)
 				init = init >> 1
-				state = (state>>1)&0x7FFFFFFFFFFF | (bit<<47)&0x800000000000
+				state = state>>1 | bit<<47
 				round += 1
 				cell := i / 8
 				pos := i % 8
-				fn := f()
 				result[cell] = result[cell] | (fn & 0x1 << pos)
 			}
 		} else {
 			// Столько раундов, сколько длина входного массива
 			for i := 0; i < rounds; i++ {
+				fn := f()
 				bit := lsfrN() & 0x1
-				state = (state>>1)&0x7FFFFFFFFFFF | (bit<<47)&0x800000000000
+				state = state>>1 | bit<<47
 				round += 1
 				cell := i / 8
 				pos := i % 8
-				fn := f()
 				result[cell] = result[cell] | (fn & 0x1 << pos)
 			}
 		}
