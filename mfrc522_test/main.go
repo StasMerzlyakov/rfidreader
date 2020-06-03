@@ -174,10 +174,11 @@ func run() int {
 
 	//driver := iso14443.NewISO14443Driver(mfrc522dev)
 
-	mfrc522dev.PCD_Init()
 	defer mfrc522dev.PCD_AntennaOff()
 
 	for i := 0; i < 50; i++ {
+		mfrc522dev.PCD_Reset()
+		mfrc522dev.PCD_Init()
 		if err := mfrc522dev.PCD_AntennaOn(); err != nil {
 			log.Printf("mfrc522dev.PCD_AntennaOn error %s\n", err.Error())
 		}
@@ -192,7 +193,14 @@ func run() int {
 				log.Printf("    uid: [% x]\n", uid.Uid)
 				log.Printf("    sak: %08b\n", uid.Sak)
 				log.Printf("    type: %d\n", uid.PicType)
-				mfrc522dev.PICC_AuthentificateKeyA(*uid, []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}, 30)
+				if err1 := mfrc522dev.PICC_AuthentificateKeyA(*uid, []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}, 30); err1 != nil {
+					log.Printf("  Authentificate error")
+				} else {
+					log.Printf("  Authentificate success")
+					if err1 := mfrc522dev.PCD_StopCrypto1(); err1 != nil {
+						log.Printf("  PCD_StopCrypto1 error")
+					}
+				}
 
 			}
 		}
@@ -200,6 +208,8 @@ func run() int {
 		if err := mfrc522dev.PCD_AntennaOff(); err != nil {
 			log.Printf("mfrc522dev.PCD_AntennaOff error %s\n", err.Error())
 		}
+
+		time.Sleep(time.Second * 2)
 
 		//driver.ScanPrepare()
 	}
@@ -210,6 +220,9 @@ func run() int {
 
 func main() {
 	os.Exit(run())
+
+	//val := []byte{0x1, 0x2, 0x3, 0x4}
+	//log.Printf("[% x]\n", val[:4])
 
 	/*val := uint16(0x0145)
 	fmt.Printf("%016b\n", val)

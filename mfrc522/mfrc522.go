@@ -374,7 +374,6 @@ func (r *MFRC522) PCD_CommunicateWithPICC(command byte, dataToSend []byte,
 	if result, err = r.PCD_ReadFIFOBuffer(int(count)); err != nil {
 		return
 	}
-
 	if *validBits > 0 {
 		var rValidBits byte
 		if rValidBits, err = r.PCD_ReadRegister(ControlReg); err != nil {
@@ -382,7 +381,6 @@ func (r *MFRC522) PCD_CommunicateWithPICC(command byte, dataToSend []byte,
 		}
 		*validBits = rValidBits & 0x7
 	}
-
 	return
 
 }
@@ -932,7 +930,43 @@ func (r *MFRC522) PICC_AuthentificateKeyA(uid UID, key []byte, sector byte) (err
 }
 */
 
-// TODO STANDART FUNCTION
 func (r *MFRC522) PICC_AuthentificateKeyA(uid UID, key []byte, sector byte) (err error) {
 
+	// Authentication command code (60h, 61h)
+	// Block address
+	// Sector key byte 0
+	// Sector key byte 1
+	// Sector key byte 2
+	// Sector key byte 3
+	// Sector key byte 4
+	// Sector key byte 5
+	// Card serial number byte 0
+	// Card serial number byte 1
+	// Card serial number byte 2
+	// Card serial number byte 3
+
+	buffer := []byte{PICC_CMD_MF_AUTH_KEY_A, sector}
+	buffer = append(buffer, key...)
+	buffer = append(buffer, uid.Uid[:4]...)
+
+	validBits := byte(0)
+	if _, err := r.PCD_CommunicateWithPICC(PCD_MFAuthent, buffer, &validBits, INTERUPT_TIMEOUT); err != nil {
+		return err
+	}
+
+	// check MFCrypto1On bit of Status2Reg
+	if status2RegVal, err := r.PCD_ReadRegister(Status2Reg); err != nil {
+		return err
+	} else {
+		log.Printf("Status2Reg: %08b\n", status2RegVal)
+		if status2RegVal&0x08 == 0 {
+			return AuthentificationError("Authentification error")
+		}
+	}
+	return
+}
+
+func (r *MFRC522) PCD_StopCrypto1() error {
+	// Clear MFCrypto1On bit
+	return r.PCD_ClearRegisterBitMask(Status2Reg, 0x08) // Status2Reg[7..0] bits are: TempSensClear I2CForceHS reserved reserved MFCrypto1On ModemState[2:0]
 }
