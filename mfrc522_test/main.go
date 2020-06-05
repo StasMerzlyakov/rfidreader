@@ -1,9 +1,6 @@
 package main
 
 import (
-	_ "bytes"
-	_ "encoding/binary"
-	_ "fmt"
 	"log"
 	"os"
 	"rfidreader/mfrc522"
@@ -193,12 +190,62 @@ func run() int {
 				log.Printf("    uid: [% x]\n", uid.Uid)
 				log.Printf("    sak: %08b\n", uid.Sak)
 				log.Printf("    type: %d\n", uid.PicType)
-				if err1 := mfrc522dev.PICC_AuthentificateKeyA(*uid, []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}, 30); err1 != nil {
-					log.Printf("  Authentificate error")
+				sector := 1
+				if err1 := mfrc522dev.PICC_AuthentificateKeyA(*uid, []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}, sector); err1 != nil {
+					log.Printf("  Authentificate error\n")
 				} else {
-					log.Printf("  Authentificate success")
-					if err1 := mfrc522dev.PCD_StopCrypto1(); err1 != nil {
-						log.Printf("  PCD_StopCrypto1 error")
+					log.Printf("  Authentificate success\n")
+					block := 2
+					/*if res, err1 := mfrc522dev.PICC_ReadBlock(sector, block); err1 != nil {
+						log.Printf("  PCD_StopCrypto1 error\n")
+					} else {
+						log.Printf(" Block %d %d: [% x]\n", sector, block, res)
+					}*/
+					/*
+						var blockVal [16]byte
+						copy(blockVal[:], []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF})
+
+						copy(blockVal[6:], []byte{0xFF, 0x07, 0x80})
+
+						copy(blockVal[10:], []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF})
+						//copy(blockVal[:], []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF})
+
+						if err1 := mfrc522dev.PICC_WriteBlock(sector, block, blockVal[:]); err1 != nil {
+							log.Printf("  PICC_WriteBlock error\n")
+						} else {
+							log.Printf(" Write OK\n")
+						}*/
+
+					/*var blockVal [16]byte
+					copy(blockVal[:], []byte("Hello world"))
+
+					if err1 := mfrc522dev.PICC_WriteBlock(sector, 2, blockVal[:]); err1 != nil {
+						log.Printf("  PICC_WriteBlock error\n")
+					} else {
+						log.Printf(" Write OK\n")
+					}
+
+					for block = 3; block >= 0; block-- {
+						if res, err1 := mfrc522dev.PICC_ReadBlock(sector, block); err1 != nil {
+							log.Printf("  Error %s\n", err1.Error())
+						} else {
+							if block != 2 {
+								log.Printf(" read sector:%d  block: %d value: [% x]\n", sector, block, res)
+							} else {
+								log.Printf(" read sector:%d  block: %d value: %s\n", sector, block, string(res))
+							}
+						}
+					} */
+
+					// Только чтение для проверки
+					if res, err1 := mfrc522dev.PICC_ReadBlock(sector, block); err1 != nil {
+						log.Printf("  Error %s\n", err1.Error())
+					} else {
+						log.Printf(" read sector:%d  block: %d value: %s\n", sector, block, string(res))
+					}
+
+					if err1 := mfrc522dev.PICC_StopCrypto1(); err1 != nil {
+						log.Printf("  PCD_StopCrypto1 error\n")
 					}
 				}
 
@@ -209,9 +256,7 @@ func run() int {
 			log.Printf("mfrc522dev.PCD_AntennaOff error %s\n", err.Error())
 		}
 
-		time.Sleep(time.Second * 2)
-
-		//driver.ScanPrepare()
+		time.Sleep(time.Second * 1)
 	}
 
 	return 0
@@ -221,8 +266,15 @@ func run() int {
 func main() {
 	os.Exit(run())
 
+	/*var blockVal [16]byte
+	copy(blockVal[:], []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF})
+
+	copy(blockVal[6:], []byte{0xFF, 0x07, 0x80})
+
+	copy(blockVal[10:], []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF})
+	*/
 	//val := []byte{0x1, 0x2, 0x3, 0x4}
-	//log.Printf("[% x]\n", val[:4])
+	//	log.Printf("[% x]\n", blockVal)
 
 	/*val := uint16(0x0145)
 	fmt.Printf("%016b\n", val)

@@ -854,6 +854,24 @@ func (r *MFRC522) PICC_RequestWUPA() ([]byte, error) {
 	return r.PCD_CommunicateWithPICC(PCD_Transceive, []byte{PICC_CMD_WUPA}, &validBits, INTERUPT_TIMEOUT)
 }
 
+/**
+ */
+func (r *MFRC522) PICC_Halt() error {
+
+	buffer := []byte{PICC_CMD_HLTA, 0}
+
+	// Calculate CRC_A
+	if result, err := r.PCD_CalculateCRC(ISO_14443_CRC_RESET, buffer, INTERUPT_TIMEOUT); err != nil {
+		return err
+	} else {
+
+		buffer = append(buffer, result...)
+		validBits := byte(0)
+		_, err := r.PCD_CommunicateWithPICC(PCD_Transceive, buffer, &validBits, INTERUPT_TIMEOUT)
+		return err
+	}
+}
+
 /*
 func (r *MFRC522) PICC_AuthentificateKeyA(uid UID, key []byte, sector byte) (err error) {
 	buffer := []byte{PICC_CMD_MF_AUTH_KEY_A, sector}
@@ -930,7 +948,7 @@ func (r *MFRC522) PICC_AuthentificateKeyA(uid UID, key []byte, sector byte) (err
 }
 */
 
-func (r *MFRC522) PICC_AuthentificateKeyA(uid UID, key []byte, sector byte) (err error) {
+func (r *MFRC522) authentificateKey(keyCode byte, uid UID, key []byte, sector int) (err error) {
 
 	// Authentication command code (60h, 61h)
 	// Block address
@@ -945,7 +963,7 @@ func (r *MFRC522) PICC_AuthentificateKeyA(uid UID, key []byte, sector byte) (err
 	// Card serial number byte 2
 	// Card serial number byte 3
 
-	buffer := []byte{PICC_CMD_MF_AUTH_KEY_A, sector}
+	buffer := []byte{keyCode, byte(sector)}
 	buffer = append(buffer, key...)
 	buffer = append(buffer, uid.Uid[:4]...)
 
@@ -966,7 +984,84 @@ func (r *MFRC522) PICC_AuthentificateKeyA(uid UID, key []byte, sector byte) (err
 	return
 }
 
-func (r *MFRC522) PCD_StopCrypto1() error {
+func (r *MFRC522) PICC_AuthentificateKeyA(uid UID, key []byte, sector int) (err error) {
+	return r.authentificateKey(PICC_CMD_MF_AUTH_KEY_A, uid, key, sector)
+}
+
+func (r *MFRC522) PICC_AuthentificateKeyB(uid UID, key []byte, sector int) (err error) {
+	return r.authentificateKey(PICC_CMD_MF_AUTH_KEY_B, uid, key, sector)
+}
+
+func (r *MFRC522) PICC_StopCrypto1() error {
 	// Clear MFCrypto1On bit
-	return r.PCD_ClearRegisterBitMask(Status2Reg, 0x08) // Status2Reg[7..0] bits are: TempSensClear I2CForceHS reserved reserved MFCrypto1On ModemState[2:0]
+	r.PCD_ClearRegisterBitMask(Status2Reg, 0x08) // Status2Reg[7..0] bits are: TempSensClear I2CForceHS reserved reserved MFCrypto1On ModemState[2:0]
+	return r.PICC_Halt()
+}
+
+func calcBlockAddress(sector int, block int) byte {
+	return byte(sector*4 + block)
+}
+
+func (r *MFRC522) PICC_ReadBlock(sector int, block int) (result []byte, err error) {
+	// Authentification required
+	var buffer [4]byte
+	copy(buffer[:], []byte{PICC_CMD_MF_READ, calcBlockAddress(sector, block)})
+
+	if crc, err := r.PCD_CalculateCRC(ISO_14443_CRC_RESET, buffer[:2], INTERUPT_TIMEOUT); err != nil {
+		return nil, err
+	} else {
+		buffer[2] = crc[0]
+		buffer[3] = crc[1]
+		validBits := byte(0)
+		if result, err = r.PCD_CommunicateWithPICC(PCD_Transceive, buffer[:], &validBits, INTERUPT_TIMEOUT); err != nil {
+			return nil, err
+		}
+		// TODO check crc
+		if len(result) > 16 {
+			return result[:16], nil
+		} else {
+			return nil, AuthentificationError(fmt.Sprintf("PICC_ReadBlock [% x]", result))
+		}
+	}
+}
+
+func (r *MFRC522) PICC_WriteBlock(sector int, block int, data []byte) error {
+	// Authentification required
+
+	var buffer [4]byte
+	copy(buffer[:], []byte{PICC_CMD_MF_WRITE, calcBlockAddress(sector, block)})
+
+	if crc, err := r.PCD_CalculateCRC(ISO_14443_CRC_RESET, buffer[:2], INTERUPT_TIMEOUT); err != nil {
+		return err
+	} else {
+		buffer[2] = crc[0]
+		buffer[3] = crc[1]
+	}
+
+	validBits := byte(0)
+	if res, err := r.PCD_CommunicateWithPICC(PCD_Transceive, buffer[:], &validBits, INTERUPT_TIMEOUT); err != nil {
+		return err
+	} else {
+		if res[0]&0x0F != 0x0A {
+			log.Printf("PICC_CMD_MF_WRITE result: [% x]\n", res)
+			return AuthentificationError("Can't authorize write")
+		}
+	}
+
+	var newData [18]byte
+
+	copy(newData[:], data[:16])
+
+	crc, err := r.PCD_CalculateCRC(ISO_14443_CRC_RESET, newData[:16], INTERUPT_TIMEOUT)
+	if err != nil {
+		return err
+	}
+
+	newData[16] = crc[0]
+	newData[17] = crc[1]
+	if _, err := r.PCD_CommunicateWithPICC(PCD_Transceive, newData[:], &validBits, INTERUPT_TIMEOUT); err != nil {
+		return err
+	}
+	log.Printf("    PICC_WriteBlock end\n")
+	return nil
 }
