@@ -190,7 +190,7 @@ func run() int {
 				log.Printf("    uid: [% x]\n", uid.Uid)
 				log.Printf("    sak: %08b\n", uid.Sak)
 				log.Printf("    type: %d\n", uid.PicType)
-				sector := 1
+				sector := 0
 				if err1 := mfrc522dev.PICC_AuthentificateKeyA(*uid, []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}, sector); err1 != nil {
 					log.Printf("  Authentificate error\n")
 				} else {
