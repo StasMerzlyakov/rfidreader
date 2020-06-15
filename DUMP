@@ -1,5 +1,8 @@
 proxmark3> hw tune
 proxmark3> hf 14a snoop
+
+hf snoop 10000 1 !!!!
+
 proxmark3> hf list 14a
 
 
