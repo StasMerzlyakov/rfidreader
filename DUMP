@@ -2,6 +2,8 @@ proxmark3> hw tune
 proxmark3> hf 14a snoop
 
 hf snoop 10000 1 !!!!
+http://www.proxmark.org/forum/viewtopic.php?id=6673
+
 
 proxmark3> hf list 14a
 
