@@ -872,6 +872,7 @@ func (r *MFRC522) PICC_Halt() error {
 	}
 }
 
+/*
 func (r *MFRC522) authentificateKey(keyCode byte, uid UID, key []byte, sector int) (err error) {
 	buffer := []byte{keyCode, byte(sector)}
 	crc := ISO14443aCRC(buffer)
@@ -944,9 +945,8 @@ func (r *MFRC522) authentificateKey(keyCode byte, uid UID, key []byte, sector in
 	}
 
 	return nil
-}
+}*/
 
-/*
 func (r *MFRC522) authentificateKey(keyCode byte, uid UID, key []byte, sector int) (err error) {
 
 	// Authentication command code (60h, 61h)
@@ -982,7 +982,7 @@ func (r *MFRC522) authentificateKey(keyCode byte, uid UID, key []byte, sector in
 	}
 	return
 }
-*/
+
 func (r *MFRC522) PICC_AuthentificateKeyA(uid UID, key []byte, sector int) (err error) {
 	return r.authentificateKey(PICC_CMD_MF_AUTH_KEY_A, uid, key, sector)
 }
