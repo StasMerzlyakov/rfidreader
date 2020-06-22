@@ -176,9 +176,11 @@ func run() int {
 	for i := 0; i < 50; i++ {
 		mfrc522dev.PCD_Reset()
 		mfrc522dev.PCD_Init()
+		mfrc522dev.PCD_SetAntennaGain(0xff)
 		if err := mfrc522dev.PCD_AntennaOn(); err != nil {
 			log.Printf("mfrc522dev.PCD_AntennaOn error %s\n", err.Error())
 		}
+
 		val := mfrc522dev.PICC_IsNewCardPresent()
 		log.Printf("IsNewCardPresent %t", val)
 		if val {
@@ -247,6 +249,7 @@ func run() int {
 					if err1 := mfrc522dev.PICC_StopCrypto1(); err1 != nil {
 						log.Printf("  PCD_StopCrypto1 error\n")
 					}
+					mfrc522dev.PCD_AntennaOff()
 				}
 
 			}
